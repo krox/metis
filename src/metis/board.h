@@ -193,6 +193,7 @@ class Board
 
   public:
 	// some special game state to keep track of (TODO: make more private)
+	// (default values are for starting position)
 	bool white_to_move = true;
 	CastlingRights castling_rights = CastlingRights::All;
 	uint64_t ep_square = 0; // either 0 or single-bit
@@ -207,13 +208,21 @@ class Board
 		bbs_.fill(0);
 	}
 
-	// parse a FEN string into a board. Throws if the FEN is invalid
-	explicit Board(std::string_view fen);
+	// starting position for normal chess
+	static Board startpos();
+
+	// parse a FEN string into a board. Throws if the FEN is invalid.
+	static Board from_fen(std::string_view);
+
+	// extended FEN format as used in UCI protocol.
+	// startpos | fen <fenstring> | <fenstring> [moves <movelist>]
+	static Board from_uci(std::string_view);
 
 	// access to individual squares (updating bitboards)
 	Piece operator[](int sq) const { return squares_[sq]; }
 
 	// bitboard of all pieces of a certain color/piecetype
+	uint64_t bb_all_pieces() const { return bb_color(true) | bb_color(false); }
 	uint64_t bb_color(bool white) const { return bbs_[white]; }
 	uint64_t bb_piece(PieceType pt, bool white) const
 	{
@@ -249,8 +258,24 @@ class Board
 	// position. Starting in non-standard position (i.e. Chess960) is allowed.
 	bool valid() const;
 
-	// check if the current position is legal, e.g., cant capture enemy king
+	// check if the current position is legal, e.g., cant capture enemy king.
+	// This function is necessary to filter out illegal moves produced by the
+	// pseudo-legal move generator.
 	bool legal() const;
+
+	// are there any legal moves?
+	// (if not, its either checkmate or stalemate)
+	bool has_legal_moves() const;
+
+	// no more legal moves, but not in check?
+	// TODO: 50-move rule, 3-fold repetition, insufficient material?
+	bool draw() const;
+
+	// is current players king in check?
+	bool in_check() const;
+
+	// in_check() && no legal moves
+	bool checkmate() const;
 
 	// does not check legality of move
 	void make_move(Move move);
@@ -266,8 +291,8 @@ class GameState
 
   public:
 	Board board;
-	GameState() : board(starting_fen) {}
-	explicit GameState(std::string_view fen) : board(fen) {}
+	GameState() : board(Board::startpos()) {}
+	explicit GameState(std::string_view fen) : board(Board::from_uci(fen)) {}
 
 	void push_move(Move move)
 	{

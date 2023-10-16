@@ -113,8 +113,12 @@ void Board::compute_attacks()
 	attacks_[true] |= bb::king_attacks(bb_piece(Piece::WhiteKing));
 }
 
-Board::Board(std::string_view fen) : Board()
+Board Board::startpos() { return from_fen(starting_fen); }
+
+Board Board::from_fen(std::string_view fen)
 {
+	Board b;
+
 	static constexpr std::string_view msg = "invalid FEN string";
 	auto parts = util::split_white(fen);
 	util::check(4 <= parts.size() && parts.size() <= 6, msg);
@@ -132,7 +136,7 @@ Board::Board(std::string_view fen) : Board()
 			else
 			{
 				util::check(file < 8, msg);
-				place_piece(char_to_piece(c), (7 - rank) * 8 + file);
+				b.place_piece(char_to_piece(c), (7 - rank) * 8 + file);
 				++file;
 			}
 		}
@@ -141,27 +145,33 @@ Board::Board(std::string_view fen) : Board()
 
 	// parts[1]: who's turn it is
 	util::check(parts[1] == "w" || parts[1] == "b", msg);
-	white_to_move = parts[1] == "w";
+	b.white_to_move = parts[1] == "w";
 
 	// parts[2]: castling rights
-	castling_rights = CastlingRights::None;
+	b.castling_rights = CastlingRights::None;
 	if (parts[2] != "-")
 		for (char c : parts[2])
 		{
 			if (c == 'K')
-				castling_rights |= CastlingRights::WhiteKingSide;
+				b.castling_rights |= CastlingRights::WhiteKingSide;
 			else if (c == 'Q')
-				castling_rights |= CastlingRights::WhiteQueenSide;
+				b.castling_rights |= CastlingRights::WhiteQueenSide;
 			else if (c == 'k')
-				castling_rights |= CastlingRights::BlackKingSide;
+				b.castling_rights |= CastlingRights::BlackKingSide;
 			else if (c == 'q')
-				castling_rights |= CastlingRights::BlackQueenSide;
+				b.castling_rights |= CastlingRights::BlackQueenSide;
 			else
 				util::check(false, msg);
 		}
 
 	// parts[3]: en passant square
-	// TODO
+	if (parts[3] != "-")
+	{
+		util::check(parts[3].size() == 2, msg);
+		util::check('a' <= parts[3][0] && parts[3][0] <= 'h', msg);
+		util::check('1' <= parts[3][1] && parts[3][1] <= '8', msg);
+		b.ep_square = 1ULL << ((parts[3][0] - 'a') + 8 * (parts[3][1] - '1'));
+	}
 
 	// parts[4]: halfmove clock (optional)
 	// TODO
@@ -169,8 +179,33 @@ Board::Board(std::string_view fen) : Board()
 	// parts[5]: fullmove number (optional)
 	// TODO
 
-	util::check(valid(), msg);
-	compute_attacks();
+	util::check(b.valid(), msg);
+	b.compute_attacks();
+	return b;
+}
+
+Board Board::from_uci(std::string_view s)
+{
+	// find 'moves' keyword
+	std::string_view moves;
+	if (size_t pos = s.find("moves"); pos != size_t(-1))
+	{
+		s = s.substr(0, pos);
+		moves = s.substr(pos + 5);
+	}
+
+	s = util::trim_white(s);
+	Board b;
+	if (s == "startpos")
+		b = startpos();
+	else if (s.starts_with("fen"))
+		b = from_fen(s.substr(3));
+	else
+		b = from_fen(s);
+
+	for (auto &token : util::split_white(moves))
+		b.make_move(Move(token));
+	return b;
 }
 
 bool Board::valid() const
@@ -203,6 +238,30 @@ bool Board::legal() const
 	return 0 == (bb_piece(PieceType::King, !white_to_move) &
 	             attacks_[white_to_move]);
 }
+
+bool Board::has_legal_moves() const
+{
+	MoveList moves;
+	generate_pseudolegal_moves(*this, moves);
+	for (auto move : moves)
+	{
+		Board new_board = *this;
+		new_board.make_move(move);
+		if (new_board.legal())
+			return true;
+	}
+	return false;
+}
+
+bool Board::draw() const { return !in_check() && !has_legal_moves(); }
+
+bool Board::in_check() const
+{
+	return (bb_piece(PieceType::King, white_to_move) &
+	        attacks_[!white_to_move]) != 0;
+}
+
+bool Board::checkmate() const { return in_check() && !has_legal_moves(); }
 
 void Board::make_move(Move move)
 {
