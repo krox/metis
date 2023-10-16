@@ -60,7 +60,7 @@ int play_game(Engine &white, Engine &black)
 			return 0;
 
 		if (board.checkmate())
-			return board.white_to_move ? -1 : 1;
+			return board.color_to_move == Color::White ? -1 : 1;
 
 		// Chess doesnt have a fixed 200-moves-rule of course, but this is still
 		// useful for overly defensive or random engines.
@@ -70,7 +70,8 @@ int play_game(Engine &white, Engine &black)
 			return 0;
 		}
 
-		auto r = board.white_to_move ? white.think(board) : black.think(board);
+		auto r = board.color_to_move == Color::White ? white.think(board)
+		                                             : black.think(board);
 		/*fmt::print("{}: {}\n", board.white_to_move ? "White" : "Black",
 		           r.best_move);*/
 		board.make_move(r.best_move);

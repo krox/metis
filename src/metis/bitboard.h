@@ -27,6 +27,11 @@ static constexpr uint64_t rank_7 = rank_1 << 48;
 static constexpr uint64_t rank_8 = rank_1 << 56;
 inline constexpr uint64_t rank(int r) { return rank_1 << (r * 8); }
 
+static constexpr uint64_t all = 0xFFFFFFFFFFFFFFFFULL;
+static constexpr uint64_t none = 0ULL;
+static constexpr uint64_t center4 = 66229406269440;    // central 4x4 squares
+static constexpr uint64_t center6 = 35604928818740736; // central 6x6 squares
+
 // returns the lowest set bit of a bitboard and clears it. usually for a loop
 //     for(uint64_t sq; (sq = pop_lsb(bb)); ) { ... }
 inline uint64_t pop_lsb(uint64_t &bb)
@@ -75,6 +80,16 @@ inline uint64_t black_pawn_moves(uint64_t pawns, uint64_t occupied)
 	moves |= down(pawns);
 	moves |= down(down(pawns & rank_7) & ~occupied);
 	return moves & ~occupied;
+}
+
+inline uint64_t pawn_attacks(uint64_t pawns, bool white)
+{
+	return white ? white_pawn_attacks(pawns) : black_pawn_attacks(pawns);
+}
+inline uint64_t pawn_moves(uint64_t pawns, uint64_t occupied, bool white)
+{
+	return white ? white_pawn_moves(pawns, occupied)
+	             : black_pawn_moves(pawns, occupied);
 }
 
 inline uint64_t knight_attacks(uint64_t knights)

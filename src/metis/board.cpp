@@ -77,7 +77,7 @@ void Board::place_piece(Piece p, int sq)
 {
 	assert(squares_[sq] == Piece::Empty);
 	squares_[sq] = p;
-	bbs_[is_white(p)] |= 1ULL << sq;
+	bbs_[int(color(p))] |= 1ULL << sq;
 	bbs_[int(piecetype(p))] |= 1ULL << sq;
 }
 
@@ -86,13 +86,13 @@ void Board::remove_piece(int sq)
 	auto p = squares_[sq];
 	assert(p != Piece::Empty);
 	squares_[sq] = Piece::Empty;
-	bbs_[is_white(p)] &= ~(1ULL << sq);
+	bbs_[int(color(p))] &= ~(1ULL << sq);
 	bbs_[int(piecetype(p))] &= ~(1ULL << sq);
 }
 
 void Board::compute_attacks()
 {
-	uint64_t occupied = bb_color(false) | bb_color(true);
+	uint64_t occupied = bb_all_pieces();
 
 	attacks_[false] = 0;
 	attacks_[false] |= bb::black_pawn_attacks(bb_piece(Piece::BlackPawn));
@@ -145,7 +145,7 @@ Board Board::from_fen(std::string_view fen)
 
 	// parts[1]: who's turn it is
 	util::check(parts[1] == "w" || parts[1] == "b", msg);
-	b.white_to_move = parts[1] == "w";
+	b.color_to_move = parts[1] == "w" ? Color::White : Color::Black;
 
 	// parts[2]: castling rights
 	b.castling_rights = CastlingRights::None;
@@ -235,8 +235,8 @@ bool Board::valid() const
 
 bool Board::legal() const
 {
-	return 0 == (bb_piece(PieceType::King, !white_to_move) &
-	             attacks_[white_to_move]);
+	return 0 == (bb_piece(PieceType::King, -color_to_move) &
+	             bb_attacks(color_to_move));
 }
 
 bool Board::has_legal_moves() const
@@ -257,8 +257,8 @@ bool Board::draw() const { return !in_check() && !has_legal_moves(); }
 
 bool Board::in_check() const
 {
-	return (bb_piece(PieceType::King, white_to_move) &
-	        attacks_[!white_to_move]) != 0;
+	return (bb_piece(PieceType::King, color_to_move) &
+	        bb_attacks(-color_to_move)) != 0;
 }
 
 bool Board::checkmate() const { return in_check() && !has_legal_moves(); }
@@ -284,7 +284,7 @@ void Board::make_move(Move move)
 		          : move.promotion == 1 ? PieceType::Bishop
 		          : move.promotion == 2 ? PieceType::Rook
 		                                : PieceType::Queen;
-		place_piece(make_piece(pt, white_to_move), move.to);
+		place_piece(make_piece(pt, color_to_move), move.to);
 	}
 	else
 		place_piece(piece, move.to);
@@ -292,7 +292,7 @@ void Board::make_move(Move move)
 	// execute en passant capture
 	if (move.special == 1)
 	{
-		if (white_to_move)
+		if (color_to_move == Color::White)
 			remove_piece(move.to - 8);
 		else
 			remove_piece(move.to + 8);
@@ -337,7 +337,7 @@ void Board::make_move(Move move)
 	if (move.from == 60)
 		castling_rights &= ~CastlingRights::Black;
 
-	white_to_move = !white_to_move;
+	color_to_move = -color_to_move;
 	compute_attacks();
 }
 

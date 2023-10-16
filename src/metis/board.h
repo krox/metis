@@ -21,11 +21,10 @@ enum class CastlingRights : uint8_t
 	All = 15,
 };
 
-// Maybe we should have separate enums (bitfields?) for color/piecetype/piece.
-// But for now, this seems very convenient.
-
 enum class PieceType : uint8_t
 {
+	// NOTE: starting from 2 means that PieceType and Color do not overlap,
+	// which is nice for some low-level bitboard stuff.
 	Pawn = 2,
 	Knight,
 	Bishop,
@@ -34,18 +33,26 @@ enum class PieceType : uint8_t
 	King,
 };
 
+enum class Color : uint8_t
+{
+	Black = 0,
+	White = 1,
+};
+
+inline Color operator-(Color c) { return Color(!uint8_t(c)); }
+
 enum class Piece : uint8_t
 {
 	Empty = 0,
 
-	BlackPawn = uint8_t(PieceType::Pawn),
+	BlackPawn = uint8_t(PieceType::Pawn) | uint8_t(Color::Black) << 3,
 	BlackKnight,
 	BlackBishop,
 	BlackRook,
 	BlackQueen,
 	BlackKing,
 
-	WhitePawn = uint8_t(PieceType::Pawn) + 8,
+	WhitePawn = uint8_t(PieceType::Pawn) | uint8_t(Color::White) << 3,
 	WhiteKnight,
 	WhiteBishop,
 	WhiteRook,
@@ -95,19 +102,15 @@ inline PieceType piecetype(Piece p)
 	return PieceType(p & Piece::PieceTypeMask);
 }
 
-// NOTE: empty squares are neither black nor white
-inline constexpr bool is_white(Piece p)
+// note: color is considered undefined for empty squares
+inline Color color(Piece p)
 {
-	return Piece::WhitePawn <= p && p <= Piece::WhiteKing;
-}
-inline constexpr bool is_black(Piece p)
-{
-	return Piece::BlackPawn <= p && p <= Piece::BlackKing;
+	return Color(uint8_t(p & Piece::ColorMask) >> 3);
 }
 
-inline constexpr Piece make_piece(PieceType pt, bool white)
+inline constexpr Piece make_piece(PieceType pt, Color color)
 {
-	return Piece(uint8_t(pt) | (white ? 8 : 0));
+	return Piece(uint8_t(pt) | uint8_t(color) << 3);
 }
 
 // convert piece to/from char in standard notation, e.g. 'P' for white pawn
@@ -194,7 +197,7 @@ class Board
   public:
 	// some special game state to keep track of (TODO: make more private)
 	// (default values are for starting position)
-	bool white_to_move = true;
+	Color color_to_move = Color::White;
 	CastlingRights castling_rights = CastlingRights::All;
 	uint64_t ep_square = 0; // either 0 or single-bit
 
@@ -222,31 +225,34 @@ class Board
 	Piece operator[](int sq) const { return squares_[sq]; }
 
 	// bitboard of all pieces of a certain color/piecetype
-	uint64_t bb_all_pieces() const { return bb_color(true) | bb_color(false); }
-	uint64_t bb_color(bool white) const { return bbs_[white]; }
-	uint64_t bb_piece(PieceType pt, bool white) const
+	uint64_t bb_all_pieces() const
 	{
-		return bbs_[int(pt)] & bbs_[white];
+		return bb_color(Color::Black) | bb_color(Color::White);
+	}
+	uint64_t bb_color(Color color) const { return bbs_[int(color)]; }
+	uint64_t bb_piece(PieceType pt, Color color) const
+	{
+		return bbs_[int(pt)] & bbs_[int(color)];
 	}
 	uint64_t bb_piece(Piece p) const
 	{
-		return bb_piece(piecetype(p), is_white(p));
+		return bb_piece(piecetype(p), color(p));
 	}
-	uint64_t bb_attacks(bool white) const { return attacks_[white]; }
+	uint64_t bb_attacks(Color color) const { return attacks_[int(color)]; }
 
 	// check if we have castling right on certain side.
 	// NOTE: this does not check if it is actually possible right now (due to
 	// attacked/blocked squares), but only whether king+rook have not moved yet.
-	bool castling_right_kingside(bool white) const
+	bool castling_right_kingside(Color color) const
 	{
-		if (white)
+		if (color == Color::White)
 			return !!(castling_rights & CastlingRights::WhiteKingSide);
 		else
 			return !!(castling_rights & CastlingRights::BlackKingSide);
 	}
-	bool castling_right_queenside(bool white) const
+	bool castling_right_queenside(Color color) const
 	{
-		if (white)
+		if (color == Color::White)
 			return !!(castling_rights & CastlingRights::WhiteQueenSide);
 		else
 			return !!(castling_rights & CastlingRights::BlackQueenSide);

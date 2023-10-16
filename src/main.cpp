@@ -2,6 +2,8 @@
 #include "fmt/format.h"
 #include "metis/board.h"
 #include "metis/engine.h"
+#include "metis/evaluator.h"
+#include "metis/training.h"
 
 using namespace metis;
 
@@ -35,6 +37,9 @@ int main(int argc, char **argv)
 	match->add_option("left_engine", left_engine, "Left engine");
 	match->add_option("right_engine", right_engine, "Right engine");
 
+	auto train = app.add_subcommand(
+	    "train", "optimize weights of a evaluation function using self-play");
+
 	// parse
 	CLI11_PARSE(app, argc, argv);
 
@@ -63,5 +68,19 @@ int main(int argc, char **argv)
 		left->seed(fmt::format("{}_left", seed));
 		right->seed(fmt::format("{}_right", seed));
 		play_match(*left, *right, 100000);
+	}
+	else if (train->parsed())
+	{
+		auto engine = make_engine("mate-in-one");
+
+		LinearEvaluator eval;
+
+		eval.add_term({.bb = bb::all, .pt = PieceType::Pawn, .score = 0});
+		eval.add_term({.bb = bb::all, .pt = PieceType::Knight, .score = 0});
+		eval.add_term({.bb = bb::all, .pt = PieceType::Bishop, .score = 0});
+		eval.add_term({.bb = bb::all, .pt = PieceType::Rook, .score = 0});
+		eval.add_term({.bb = bb::all, .pt = PieceType::Queen, .score = 0});
+
+		run_training(*engine, eval);
 	}
 }

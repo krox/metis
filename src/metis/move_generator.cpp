@@ -9,9 +9,9 @@ void generate_pseudolegal_moves(Board const &board, MoveList &moves)
 {
 	size_t head = moves.size();
 
-	bool my_color = board.white_to_move;
+	auto my_color = board.color_to_move;
 	auto me = board.bb_color(my_color);
-	auto them = board.bb_color(!my_color);
+	auto them = board.bb_color(-my_color);
 	auto occupied = me | them;
 
 	auto pawns = board.bb_piece(PieceType::Pawn, my_color);
@@ -34,8 +34,7 @@ void generate_pseudolegal_moves(Board const &board, MoveList &moves)
 	for (auto bb = pawns; bb;)
 	{
 		auto from = bb::pop_lsb(bb);
-		auto to = my_color ? bb::white_pawn_moves(from, occupied)
-		                   : bb::black_pawn_moves(from, occupied);
+		auto to = bb::pawn_moves(from, occupied, my_color == Color::White);
 		gen(from, to);
 	}
 
@@ -43,8 +42,7 @@ void generate_pseudolegal_moves(Board const &board, MoveList &moves)
 	for (auto bb = pawns; bb;)
 	{
 		auto from = bb::pop_lsb(bb);
-		auto to = my_color ? bb::white_pawn_attacks(from)
-		                   : bb::black_pawn_attacks(from);
+		auto to = bb::pawn_attacks(from, my_color == Color::White);
 		to &= them;
 		gen(from, to);
 	}
@@ -55,7 +53,7 @@ void generate_pseudolegal_moves(Board const &board, MoveList &moves)
 		for (size_t i = head; i < tail; ++i)
 		{
 			auto &m = moves[i];
-			if ((my_color && m.to >= 56) || (!my_color && m.to < 8))
+			if (m.to >= 56 || m.to < 8)
 			{
 				m.special = 3;
 				m.promotion = 0;
@@ -73,7 +71,7 @@ void generate_pseudolegal_moves(Board const &board, MoveList &moves)
 	if (board.ep_square != 0)
 	{
 		uint64_t to = board.ep_square;
-		uint64_t from = my_color ? bb::down(to) : bb::up(to);
+		uint64_t from = my_color == Color::White ? bb::down(to) : bb::up(to);
 		from = bb::left(from) | bb::right(from);
 		from &= pawns;
 
@@ -105,18 +103,18 @@ void generate_pseudolegal_moves(Board const &board, MoveList &moves)
 	}
 
 	// castling
-	int offset = my_color ? 0 : 56;
+	int offset = my_color == Color::White ? 0 : 56;
 	uint64_t attack_mask_kingside = uint64_t(112) << offset;
 	uint64_t block_mask_kingside = uint64_t(96) << offset;
 	uint64_t attack_mask_queenside = uint64_t(28) << offset;
 	uint64_t block_mask_queenside = uint64_t(14) << offset;
 	if (board.castling_right_kingside(my_color))
 		if ((occupied & block_mask_kingside) == 0)
-			if ((board.bb_attacks(!my_color) & attack_mask_kingside) == 0)
+			if ((board.bb_attacks(-my_color) & attack_mask_kingside) == 0)
 				moves.push_back(Move::castle(4 + offset, 6 + offset));
 	if (board.castling_right_queenside(my_color))
 		if ((occupied & block_mask_queenside) == 0)
-			if ((board.bb_attacks(!my_color) & attack_mask_queenside) == 0)
+			if ((board.bb_attacks(-my_color) & attack_mask_queenside) == 0)
 				moves.push_back(Move::castle(4 + offset, 2 + offset));
 }
 } // namespace metis
