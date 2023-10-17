@@ -1,6 +1,7 @@
 #pragma once
 
 #include "metis/board.h"
+#include "util/json.h"
 
 // forward declare Eigen::VectorXf
 namespace Eigen {
@@ -35,7 +36,7 @@ class LinearEvaluator : public Evaluator
   public:
 	struct Term
 	{
-		uint64_t bb;
+		Bitboard bb;
 		PieceType pt;
 		int score;
 	};
@@ -44,13 +45,21 @@ class LinearEvaluator : public Evaluator
 	std::vector<Term> terms_;
 
   public:
+	// default = no terms = always return 0
+	LinearEvaluator() = default;
+	explicit LinearEvaluator(util::Json /*const&*/ json);
+
 	std::vector<Term> const &terms() const { return terms_; }
 	void add_term(Term term) { terms_.push_back(term); }
+
+	void set_weights(Eigen::VectorXf const &weights);
 
 	// get the features for a given board. Used for training
 	void get_features(Board const &board, Eigen::VectorXf &features) const;
 
 	int evaluate(Board const &board) const override;
 };
+
+util::Json to_json(LinearEvaluator const &);
 
 } // namespace metis

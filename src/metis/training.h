@@ -5,5 +5,5 @@
 #include <vector>
 
 namespace metis {
-void run_training(Engine &engine, LinearEvaluator const &eval);
+void run_training(Engine &engine, LinearEvaluator &eval);
 }

@@ -14,6 +14,7 @@ int main(int argc, char **argv)
 	std::string initial_moves = "";
 	bool show_position = false;
 	std::string seed = "";
+	int ngames = 1000;
 
 	// peft options
 	int depth = -1;
@@ -36,6 +37,7 @@ int main(int argc, char **argv)
 	    "match", "run a multi-game match between two engines");
 	match->add_option("left_engine", left_engine, "Left engine");
 	match->add_option("right_engine", right_engine, "Right engine");
+	match->add_option("-n,--games", ngames, "Number of games");
 
 	auto train = app.add_subcommand(
 	    "train", "optimize weights of a evaluation function using self-play");
@@ -67,7 +69,7 @@ int main(int argc, char **argv)
 		auto right = make_engine(right_engine);
 		left->seed(fmt::format("{}_left", seed));
 		right->seed(fmt::format("{}_right", seed));
-		play_match(*left, *right, 100000);
+		play_match(*left, *right, ngames);
 	}
 	else if (train->parsed())
 	{
@@ -75,11 +77,14 @@ int main(int argc, char **argv)
 
 		LinearEvaluator eval;
 
-		eval.add_term({.bb = bb::all, .pt = PieceType::Pawn, .score = 0});
-		eval.add_term({.bb = bb::all, .pt = PieceType::Knight, .score = 0});
-		eval.add_term({.bb = bb::all, .pt = PieceType::Bishop, .score = 0});
-		eval.add_term({.bb = bb::all, .pt = PieceType::Rook, .score = 0});
-		eval.add_term({.bb = bb::all, .pt = PieceType::Queen, .score = 0});
+		eval.add_term({.bb = Bitboard::all, .pt = PieceType::Pawn, .score = 0});
+		eval.add_term(
+		    {.bb = Bitboard::all, .pt = PieceType::Knight, .score = 0});
+		eval.add_term(
+		    {.bb = Bitboard::all, .pt = PieceType::Bishop, .score = 0});
+		eval.add_term({.bb = Bitboard::all, .pt = PieceType::Rook, .score = 0});
+		eval.add_term(
+		    {.bb = Bitboard::all, .pt = PieceType::Queen, .score = 0});
 
 		run_training(*engine, eval);
 	}

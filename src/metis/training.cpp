@@ -2,7 +2,7 @@
 #include "Eigen/Dense"
 
 namespace metis {
-void run_training(Engine &engine, LinearEvaluator const &eval)
+void run_training(Engine &engine, LinearEvaluator &eval)
 {
 	// F = features (one row per game)
 	// R = result (single column)
@@ -52,9 +52,8 @@ void run_training(Engine &engine, LinearEvaluator const &eval)
 		if (iter % 100 == 0 && iter >= 2 * nfeat)
 		{
 			Eigen::VectorXf W = M.inverse() * V;
-			fmt::print("iter={}\n", iter);
-			for (size_t i = 0; i < nfeat; ++i)
-				fmt::print("{}: {}\n", i, float(W(i)));
+			eval.set_weights(W);
+			fmt::print("iter={}\n{:h}\n", iter, to_json(eval));
 		}
 	}
 }

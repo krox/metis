@@ -129,6 +129,9 @@ struct Move
 	uint8_t special : 2 = 0; // 0: normal, 1: e.p., 2: castling, 3: promotion
 
 	Move() = default;
+
+	static Move null() { return Move(); }
+
 	Move(int f, int t) : from(f), to(t) {}
 	static Move ep(int f, int t)
 	{
@@ -184,8 +187,8 @@ static_assert(sizeof(Move) == 2);
 class Board
 {
 	std::array<Piece, 64> squares_;
-	std::array<uint64_t, 8> bbs_;     // {black, white, pawn, knight, ...}
-	std::array<uint64_t, 2> attacks_; // {black, white}
+	std::array<Bitboard, 8> bbs_;     // {black, white, pawn, knight, ...}
+	std::array<Bitboard, 2> attacks_; // {black, white}
 
 	// updates 'bbs_' bitboards, but not the attack bitboards. (thus private)
 	void place_piece(Piece p, int sq);
@@ -199,7 +202,7 @@ class Board
 	// (default values are for starting position)
 	Color color_to_move = Color::White;
 	CastlingRights castling_rights = CastlingRights::All;
-	uint64_t ep_square = 0; // either 0 or single-bit
+	Bitboard ep_square = Bitboard::none; // either 0 or single-bit
 
 	// TODO: halfmove clock, fullmove number
 
@@ -208,7 +211,7 @@ class Board
 	Board()
 	{
 		squares_.fill(Piece::Empty);
-		bbs_.fill(0);
+		bbs_.fill(Bitboard::none);
 	}
 
 	// starting position for normal chess
@@ -225,20 +228,20 @@ class Board
 	Piece operator[](int sq) const { return squares_[sq]; }
 
 	// bitboard of all pieces of a certain color/piecetype
-	uint64_t bb_all_pieces() const
+	Bitboard bb_all_pieces() const
 	{
 		return bb_color(Color::Black) | bb_color(Color::White);
 	}
-	uint64_t bb_color(Color color) const { return bbs_[int(color)]; }
-	uint64_t bb_piece(PieceType pt, Color color) const
+	Bitboard bb_color(Color color) const { return bbs_[int(color)]; }
+	Bitboard bb_piece(PieceType pt, Color color) const
 	{
 		return bbs_[int(pt)] & bbs_[int(color)];
 	}
-	uint64_t bb_piece(Piece p) const
+	Bitboard bb_piece(Piece p) const
 	{
 		return bb_piece(piecetype(p), color(p));
 	}
-	uint64_t bb_attacks(Color color) const { return attacks_[int(color)]; }
+	Bitboard bb_attacks(Color color) const { return attacks_[int(color)]; }
 
 	// check if we have castling right on certain side.
 	// NOTE: this does not check if it is actually possible right now (due to

@@ -21,28 +21,25 @@ void generate_pseudolegal_moves(Board const &board, MoveList &moves)
 	auto queens = board.bb_piece(PieceType::Queen, my_color);
 	auto kings = board.bb_piece(PieceType::King, my_color);
 
-	auto gen = [&](uint64_t from, uint64_t to) {
-		assert(std::popcount(from) == 1);
-		while (to)
-		{
-			moves.push_back(Move(std::countr_zero(from), std::countr_zero(to)));
-			to &= to - 1;
-		}
+	auto gen = [&](Bitboard from, Bitboard to) {
+		assert(popcount(from) == 1);
+		while (any(to))
+			moves.push_back(Move(first_set(from), first_set(pop_lsb(to))));
 	};
 
 	// pawn non-capture moves
-	for (auto bb = pawns; bb;)
+	for (auto bb = pawns; any(bb);)
 	{
-		auto from = bb::pop_lsb(bb);
-		auto to = bb::pawn_moves(from, occupied, my_color == Color::White);
+		auto from = pop_lsb(bb);
+		auto to = pawn_moves(from, occupied, my_color == Color::White);
 		gen(from, to);
 	}
 
 	// pawn (non-e.p.) capture moves
-	for (auto bb = pawns; bb;)
+	for (auto bb = pawns; any(bb);)
 	{
-		auto from = bb::pop_lsb(bb);
-		auto to = bb::pawn_attacks(from, my_color == Color::White);
+		auto from = pop_lsb(bb);
+		auto to = pawn_attacks(from, my_color == Color::White);
 		to &= them;
 		gen(from, to);
 	}
@@ -68,53 +65,52 @@ void generate_pseudolegal_moves(Board const &board, MoveList &moves)
 	}
 
 	// en passant captures
-	if (board.ep_square != 0)
+	if (any(board.ep_square))
 	{
-		uint64_t to = board.ep_square;
-		uint64_t from = my_color == Color::White ? bb::down(to) : bb::up(to);
-		from = bb::left(from) | bb::right(from);
+		Bitboard to = board.ep_square;
+		Bitboard from = my_color == Color::White ? down(to) : up(to);
+		from = left(from) | right(from);
 		from &= pawns;
 
-		for (; from; bb::pop_lsb(from))
-			moves.push_back(
-			    Move::ep(std::countr_zero(from), std::countr_zero(to)));
+		for (; any(from); pop_lsb(from))
+			moves.push_back(Move::ep(first_set(from), first_set(to)));
 	}
 
 	// non-pawn moves (capture and non-capture combined)
-	for (auto bb = knights; bb;)
+	for (auto bb = knights; any(bb);)
 	{
-		auto from = bb::pop_lsb(bb);
-		gen(from, bb::knight_attacks(from) & ~me);
+		auto from = pop_lsb(bb);
+		gen(from, knight_attacks(from) & ~me);
 	}
-	for (auto bb = bishops | queens; bb;)
+	for (auto bb = bishops | queens; any(bb);)
 	{
-		auto from = bb::pop_lsb(bb);
-		gen(from, bb::bishop_attacks(from, me | them) & ~me);
+		auto from = pop_lsb(bb);
+		gen(from, bishop_attacks(from, me | them) & ~me);
 	}
-	for (auto bb = rooks | queens; bb;)
+	for (auto bb = rooks | queens; any(bb);)
 	{
-		auto from = bb::pop_lsb(bb);
-		gen(from, bb::rook_attacks(from, me | them) & ~me);
+		auto from = pop_lsb(bb);
+		gen(from, rook_attacks(from, me | them) & ~me);
 	}
-	for (auto bb = kings; bb;)
+	for (auto bb = kings; any(bb);)
 	{
-		auto from = bb::pop_lsb(bb);
-		gen(from, bb::king_attacks(from) & ~me);
+		auto from = pop_lsb(bb);
+		gen(from, king_attacks(from) & ~me);
 	}
 
 	// castling
 	int offset = my_color == Color::White ? 0 : 56;
-	uint64_t attack_mask_kingside = uint64_t(112) << offset;
-	uint64_t block_mask_kingside = uint64_t(96) << offset;
-	uint64_t attack_mask_queenside = uint64_t(28) << offset;
-	uint64_t block_mask_queenside = uint64_t(14) << offset;
+	Bitboard attack_mask_kingside = Bitboard(uint64_t(112) << offset);
+	Bitboard block_mask_kingside = Bitboard(uint64_t(96) << offset);
+	Bitboard attack_mask_queenside = Bitboard(uint64_t(28) << offset);
+	Bitboard block_mask_queenside = Bitboard(uint64_t(14) << offset);
 	if (board.castling_right_kingside(my_color))
-		if ((occupied & block_mask_kingside) == 0)
-			if ((board.bb_attacks(-my_color) & attack_mask_kingside) == 0)
+		if (none(occupied & block_mask_kingside))
+			if (none(board.bb_attacks(-my_color) & attack_mask_kingside))
 				moves.push_back(Move::castle(4 + offset, 6 + offset));
 	if (board.castling_right_queenside(my_color))
-		if ((occupied & block_mask_queenside) == 0)
-			if ((board.bb_attacks(-my_color) & attack_mask_queenside) == 0)
+		if (none(occupied & block_mask_queenside))
+			if (none(board.bb_attacks(-my_color) & attack_mask_queenside))
 				moves.push_back(Move::castle(4 + offset, 2 + offset));
 }
 } // namespace metis

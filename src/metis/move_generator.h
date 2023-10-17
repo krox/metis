@@ -15,7 +15,8 @@ static constexpr int MAX_LEGAL_MOVES = 255;
 static constexpr int MAX_PLIES = 512;
 
 // a list of moves, typically a result of move generation
-using MoveList = util::static_vector<Move, MAX_LEGAL_MOVES>;
+// using MoveList = util::static_vector<Move, MAX_LEGAL_MOVES>;
+using MoveList = util::small_vector<Move, 32>;
 
 // generate all legal moves plus some pseudolegal moves
 // (can be filtered out by calling .is_legal() on the resulting positions)
