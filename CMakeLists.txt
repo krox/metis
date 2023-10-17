@@ -6,7 +6,7 @@ include(cmake/CPM.cmake)
 CPMAddPackage(
 	NAME util
 	GITHUB_REPOSITORY krox/util
-	GIT_TAG cd604cbbe93a1dbabf15eb5337c51c6d626e1138
+	GIT_TAG 9b6b0560d4edb3c8e50d10f7b2ed184e512407dc
 )
 
 CPMAddPackage(
@@ -28,19 +28,21 @@ CPMAddPackage(
 	OPTIONS "BUILD_TESTING OFF"
 )
 
+find_package(OpenMP REQUIRED)
+
 file(GLOB files_cpp "src/metis/*.cpp")
 add_executable(metis "src/main.cpp" ${files_cpp})
 
 target_compile_features(metis PUBLIC cxx_std_20)
 target_include_directories(metis PUBLIC src)
-target_link_libraries(metis PUBLIC util CLI11::CLI11 Eigen3::Eigen)
+target_link_libraries(metis PUBLIC util CLI11::CLI11 Eigen3::Eigen OpenMP::OpenMP_CXX)
 target_compile_options(metis PUBLIC -Wall -Wextra -Werror -g -march=native)
 
 # unittests
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 	add_executable(tests tests/movegen.cpp ${files_cpp})
 	target_compile_features(tests PRIVATE cxx_std_17)
-	target_link_libraries(tests PUBLIC Catch2::Catch2WithMain util CLI11::CLI11 Eigen3::Eigen)
+	target_link_libraries(tests PUBLIC Catch2::Catch2WithMain util CLI11::CLI11 Eigen3::Eigen OpenMP::OpenMP_CXX)
 	target_include_directories(tests PUBLIC src)
 	target_compile_options(tests PUBLIC -Wall -Wextra -Werror -g -march=native)
 endif()

@@ -8,9 +8,9 @@
 namespace metis {
 
 // minimax with alpha-beta pruning
-class NegamaxEngine : public Engine
+class NegamaxEngine final : public Engine
 {
-	std::unique_ptr<Evaluator> eval_;
+	std::shared_ptr<Evaluator> eval_;
 
 	double beta_ = 0.01;
 
@@ -24,11 +24,15 @@ class NegamaxEngine : public Engine
 	           std::stop_token const &);
 
   public:
-	NegamaxEngine(std::unique_ptr<Evaluator> eval) : eval_(std::move(eval))
+	NegamaxEngine(std::shared_ptr<Evaluator> eval) : eval_(std::move(eval))
 	{
 		assert(eval_);
 	}
 	virtual ~NegamaxEngine() = default;
+	std::unique_ptr<Engine> clone() const override
+	{
+		return std::make_unique<NegamaxEngine>(*this);
+	}
 
 	void set_depth_limit(int depth) { depth_limit_ = depth; }
 

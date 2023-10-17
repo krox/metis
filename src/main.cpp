@@ -41,6 +41,7 @@ int main(int argc, char **argv)
 
 	auto train = app.add_subcommand(
 	    "train", "optimize weights of a evaluation function using self-play");
+	setup_train_command(*train);
 
 	// parse
 	CLI11_PARSE(app, argc, argv);
@@ -70,22 +71,5 @@ int main(int argc, char **argv)
 		left->seed(fmt::format("{}_left", seed));
 		right->seed(fmt::format("{}_right", seed));
 		play_match(*left, *right, ngames);
-	}
-	else if (train->parsed())
-	{
-		auto engine = make_engine("mate-in-one");
-
-		LinearEvaluator eval;
-
-		eval.add_term({.bb = Bitboard::all, .pt = PieceType::Pawn, .score = 0});
-		eval.add_term(
-		    {.bb = Bitboard::all, .pt = PieceType::Knight, .score = 0});
-		eval.add_term(
-		    {.bb = Bitboard::all, .pt = PieceType::Bishop, .score = 0});
-		eval.add_term({.bb = Bitboard::all, .pt = PieceType::Rook, .score = 0});
-		eval.add_term(
-		    {.bb = Bitboard::all, .pt = PieceType::Queen, .score = 0});
-
-		run_training(*engine, eval);
 	}
 }

@@ -43,6 +43,8 @@ class Engine
 		return result;
 	}
 
+	virtual std::unique_ptr<Engine> clone() const = 0;
+
 	virtual ~Engine() = default;
 
 	void seed(uint64_t seed) { rng.seed(seed); }
@@ -51,19 +53,29 @@ class Engine
 };
 
 // trivial engine that plays randomly
-class RandomEngine : public Engine
+class RandomEngine final : public Engine
 {
   public:
 	void think(Board const &board, ProgressCallback progress,
 	           std::stop_token stoken) override;
+
+	std::unique_ptr<Engine> clone() const override
+	{
+		return std::make_unique<RandomEngine>(*this);
+	}
 };
 
 // trivial engine that detects mate in one, and otherwise plays randomly
-class MateInOneEngine : public Engine
+class MateInOneEngine final : public Engine
 {
   public:
 	void think(Board const &board, ProgressCallback progress,
 	           std::stop_token stoken) override;
+
+	std::unique_ptr<Engine> clone() const override
+	{
+		return std::make_unique<MateInOneEngine>(*this);
+	}
 };
 
 // play a single game between two engines
