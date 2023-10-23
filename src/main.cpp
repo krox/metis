@@ -4,6 +4,7 @@
 #include "metis/engine.h"
 #include "metis/evaluator.h"
 #include "metis/training.h"
+#include "metis/uci.h"
 
 using namespace metis;
 
@@ -25,7 +26,7 @@ int main(int argc, char **argv)
 
 	// CLI11 app
 	auto app = CLI::App{"Metis"};
-	app.require_subcommand(1);
+	app.require_subcommand(0, 1);
 	app.add_option("--fen", fen, "FEN");
 	app.add_option("--moves", initial_moves, "Initial moves");
 	app.add_flag("--show-position", show_position, "Show initial position");
@@ -39,6 +40,8 @@ int main(int argc, char **argv)
 	match->add_option("right_engine", right_engine, "Right engine");
 	match->add_option("-n,--games", ngames, "Number of games");
 
+	auto uci = app.add_subcommand("uci", "UCI mode");
+	(void)uci;
 	auto train = app.add_subcommand(
 	    "train", "optimize weights of a evaluation function using self-play");
 	setup_train_command(*train);
@@ -71,5 +74,11 @@ int main(int argc, char **argv)
 		left->seed(fmt::format("{}_left", seed));
 		right->seed(fmt::format("{}_right", seed));
 		play_match(*left, *right, ngames);
+	}
+	else /*if (uci->parsed())*/
+	{
+		UCIHandler handler(make_engine("mate-in-one"));
+		handler.set_log_file("uci.log");
+		handler.run();
 	}
 }

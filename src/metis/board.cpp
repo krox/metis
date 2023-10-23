@@ -194,8 +194,8 @@ Board Board::from_uci(std::string_view s)
 	std::string_view moves;
 	if (size_t pos = s.find("moves"); pos != size_t(-1))
 	{
-		s = s.substr(0, pos);
 		moves = s.substr(pos + 5);
+		s = s.substr(0, pos);
 	}
 
 	s = util::trim_white(s);
