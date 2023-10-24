@@ -52,14 +52,13 @@ void generate_pseudolegal_moves(Board const &board, MoveList &moves)
 			auto &m = moves[i];
 			if (m.to >= 56 || m.to < 8)
 			{
-				m.special = 3;
-				m.promotion = 0;
+				m.promotion = PieceType::Queen;
 				moves.push_back(m);
-				m.promotion = 1;
+				m.promotion = PieceType::Rook;
 				moves.push_back(m);
-				m.promotion = 2;
+				m.promotion = PieceType::Bishop;
 				moves.push_back(m);
-				m.promotion = 3;
+				m.promotion = PieceType::Knight;
 			}
 		}
 	}
@@ -73,7 +72,7 @@ void generate_pseudolegal_moves(Board const &board, MoveList &moves)
 		from &= pawns;
 
 		for (; any(from); pop_lsb(from))
-			moves.push_back(Move::ep(first_set(from), first_set(to)));
+			moves.push_back(Move(first_set(from), first_set(to)));
 	}
 
 	// non-pawn moves (capture and non-capture combined)
@@ -107,10 +106,10 @@ void generate_pseudolegal_moves(Board const &board, MoveList &moves)
 	if (board.castling_right_kingside(my_color))
 		if (none(occupied & block_mask_kingside))
 			if (none(board.bb_attacks(-my_color) & attack_mask_kingside))
-				moves.push_back(Move::castle(4 + offset, 6 + offset));
+				moves.push_back(Move(4 + offset, 6 + offset));
 	if (board.castling_right_queenside(my_color))
 		if (none(occupied & block_mask_queenside))
 			if (none(board.bb_attacks(-my_color) & attack_mask_queenside))
-				moves.push_back(Move::castle(4 + offset, 2 + offset));
+				moves.push_back(Move(4 + offset, 2 + offset));
 }
 } // namespace metis

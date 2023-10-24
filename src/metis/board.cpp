@@ -270,33 +270,24 @@ bool Board::checkmate() const { return in_check() && !has_legal_moves(); }
 void Board::make_move(Move move)
 {
 	auto piece = squares_[move.from];
+	bool pawn_move = piecetype(piece) == PieceType::Pawn;
+	bool pawn_double_push = pawn_move && abs(move.from - move.to) == 16;
+	bool pawn_attack = pawn_move && abs(move.from - move.to) != 8 &&
+	                   abs(move.from - move.to) != 16;
 	assert(piece != Piece::Empty && "invalid move (from square is empty)");
 	assert(move.from != move.to && "invalid move (from and to are the same)");
 
 	// en-passant right for next move
-	if ((piece == Piece::WhitePawn || piece == Piece::BlackPawn) &&
-	    abs(move.from - move.to) == 16)
+	if (pawn_double_push)
 		ep_square = square((move.from + move.to) / 2);
 	else
 		ep_square = Bitboard::none;
 
-	// execute the move itself
-	if (squares_[move.to] != Piece::Empty)
-		remove_piece(move.to);
+	// remove old piece(s)
 	remove_piece(move.from);
-	if (move.special == 3)
-	{
-		auto pt = move.promotion == 0   ? PieceType::Knight
-		          : move.promotion == 1 ? PieceType::Bishop
-		          : move.promotion == 2 ? PieceType::Rook
-		                                : PieceType::Queen;
-		place_piece(make_piece(pt, color_to_move), move.to);
-	}
-	else
-		place_piece(piece, move.to);
-
-	// execute en passant capture
-	if (move.special == 1)
+	if (squares_[move.to] != Piece::Empty) // normal capture
+		remove_piece(move.to);
+	else if (pawn_attack) // e.p. capture
 	{
 		if (color_to_move == Color::White)
 			remove_piece(move.to - 8);
@@ -304,25 +295,30 @@ void Board::make_move(Move move)
 			remove_piece(move.to + 8);
 	}
 
-	// execute rook move in castling
-	if (move.special == 2)
+	// place new piece
+	if (move.promotion != PieceType::None) // promotion
+		piece = make_piece(move.promotion, color_to_move);
+	place_piece(piece, move.to);
+
+	// move rook when castling
+	if (piecetype(piece) == PieceType::King)
 	{
-		if (move.to == 2)
+		if (move.from == 4 && move.to == 2)
 		{
 			remove_piece(0);
 			place_piece(Piece::WhiteRook, 3);
 		}
-		else if (move.to == 6)
+		else if (move.from == 4 && move.to == 6)
 		{
 			remove_piece(7);
 			place_piece(Piece::WhiteRook, 5);
 		}
-		else if (move.to == 58)
+		else if (move.from == 60 && move.to == 58)
 		{
 			remove_piece(56);
 			place_piece(Piece::BlackRook, 59);
 		}
-		else if (move.to == 62)
+		else if (move.from == 60 && move.to == 62)
 		{
 			remove_piece(63);
 			place_piece(Piece::BlackRook, 61);

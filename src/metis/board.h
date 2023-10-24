@@ -23,6 +23,7 @@ enum class CastlingRights : uint8_t
 
 enum class PieceType : uint8_t
 {
+	None = 0,
 	// NOTE: starting from 2 means that PieceType and Color do not overlap,
 	// which is nice for some low-level bitboard stuff.
 	Pawn = 2,
@@ -121,61 +122,56 @@ Piece char_to_piece(char);
 inline const std::string starting_fen =
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+// This is equivalent to a move in standard notation "e2e4" or "e7e8q". E.g. it
+// does not generally contain information about the piece that is moved /
+// captured, or any special flags for castling / en passant. All of that has to
+// be figured out in make_move using the current board state as context.
+// TODO: Add an `ExtendedMove` type with all that extra information. It is
+// available during move-generation anyway and would be useful for
+// move-ordering for example. Also debugging.
 struct Move
 {
-	uint8_t from : 6 = 0;
-	uint8_t promotion : 2 = 0; // 0: knight, 1: bishop, 2: rook, 3: queen
-	uint8_t to : 6 = 0;
-	uint8_t special : 2 = 0; // 0: normal, 1: e.p., 2: castling, 3: promotion
+	// Fun-fact: changing from/to from uint16_t to uint8_t increases the size of
+	// `Move` from 2 to 3 bytes. Bitfields are weird.
+	uint16_t from : 6 = 0;
+	uint16_t to : 6 = 0;
+	PieceType promotion : 3 = PieceType::None; // None/Knight/Bishop/Rook/Queen
 
 	Move() = default;
 
 	static Move null() { return Move(); }
 
 	Move(int f, int t) : from(f), to(t) {}
-	static Move ep(int f, int t)
-	{
-		Move m{f, t};
-		m.special = 1;
-		return m;
-	}
-	static Move castle(int f, int t)
-	{
-		Move m{f, t};
-		m.special = 2;
-		return m;
-	}
 
 	Move(std::string_view s)
 	{
 		assert(4 <= s.size() && s.size() <= 5);
+
 		assert('a' <= s[0] && s[0] <= 'h');
 		assert('1' <= s[1] && s[1] <= '8');
 		assert('a' <= s[2] && s[2] <= 'h');
 		assert('1' <= s[3] && s[3] <= '8');
 		from = (s[0] - 'a') + 8 * (s[1] - '1');
 		to = (s[2] - 'a') + 8 * (s[3] - '1');
+
 		if (s.size() == 5)
-		{
-			special = 3;
 			switch (s[4])
 			{
 			case 'n':
-				promotion = 0;
+				promotion = PieceType::Knight;
 				break;
 			case 'b':
-				promotion = 1;
+				promotion = PieceType::Bishop;
 				break;
 			case 'r':
-				promotion = 2;
+				promotion = PieceType::Rook;
 				break;
 			case 'q':
-				promotion = 3;
+				promotion = PieceType::Queen;
 				break;
 			default:
 				assert(false);
 			}
-		}
 	}
 
 	bool operator==(Move const &) const = default;
@@ -332,8 +328,25 @@ template <> struct fmt::formatter<metis::Move> : formatter<std::string_view>
 		s.push_back('1' + a.from / 8);
 		s.push_back('a' + a.to % 8);
 		s.push_back('1' + a.to / 8);
-		if (a.special == 3)
-			s.push_back("nbrq"[a.promotion]);
+		switch (a.promotion)
+		{
+		case metis::PieceType::None:
+			break;
+		case metis::PieceType::Knight:
+			s.push_back('n');
+			break;
+		case metis::PieceType::Bishop:
+			s.push_back('b');
+			break;
+		case metis::PieceType::Rook:
+			s.push_back('r');
+			break;
+		case metis::PieceType::Queen:
+			s.push_back('q');
+			break;
+		default:
+			assert(false);
+		}
 		return formatter<std::string_view>::format(s, ctx);
 	}
 };
