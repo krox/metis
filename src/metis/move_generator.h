@@ -21,6 +21,7 @@ using MoveList = util::small_vector<Move, 32>;
 // generate all legal moves plus some pseudolegal moves
 // (can be filtered out by calling .is_legal() on the resulting positions)
 // TODO: some flags for restricting moves (caputures only, tactical only, etc.)
-void generate_pseudolegal_moves(Board const &board, MoveList &moves);
+void generate_pseudolegal_moves(Board const &board, MoveList &moves,
+                                bool capture_only = false);
 
 } // namespace metis

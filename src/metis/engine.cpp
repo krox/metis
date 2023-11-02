@@ -53,7 +53,7 @@ void MateInOneEngine::think(Board const &board, ProgressCallback progress,
 	progress(r);
 }
 
-int play_game(Engine &white, Engine &black)
+int play_game(Engine &white, Engine &black, bool verbose)
 {
 	auto board = Board::startpos();
 	int result = 0;
@@ -78,10 +78,16 @@ int play_game(Engine &white, Engine &black)
 
 		auto r = board.color_to_move == Color::White ? white.think(board)
 		                                             : black.think(board);
-		// fmt::print(" {}", r.best_move);
+		if (verbose)
+		{
+			board.print();
+			fmt::print(" {}\n", r.best_move);
+			fflush(stdout);
+		}
 		board.make_move(r.best_move);
 	}
-	// fmt::print("\nresult = {}\n", result);
+	if (verbose)
+		fmt::print("\nresult = {}\n", result);
 	return result;
 }
 
@@ -123,19 +129,21 @@ MatchResult play_match(Engine &left, Engine &right, int games)
 
 std::unique_ptr<Engine> make_engine(std::string_view name)
 {
+	// builtin engines
 	if (name == "random")
 		return std::make_unique<RandomEngine>();
-	else if (name == "mate-in-one")
+	if (name == "mate-in-one")
 		return std::make_unique<MateInOneEngine>();
-	else if (name.find(".json") != std::string_view::npos)
+
+	// json description
+	if (name.find(".json") != std::string_view::npos)
 	{
 		auto json = util::Json::parse_file(name);
 
-		auto eval = std::make_unique<LinearEvaluator>(json["eval"]);
-		auto engine = std::make_unique<NegamaxEngine>(std::move(eval));
-		engine->set_depth_limit(json["depth_limit"].get<int>());
-		engine->set_beta(json["beta"].get<double>());
-		return engine;
+		if (json.at("type").get<std::string>() == "negamax")
+			return std::make_unique<NegamaxEngine>(json);
+		else
+			throw std::runtime_error("unknown engine type in json");
 	}
 	else
 		throw std::runtime_error("unknown engine");

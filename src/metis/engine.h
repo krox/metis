@@ -79,7 +79,7 @@ class MateInOneEngine final : public Engine
 };
 
 // play a single game between two engines
-int play_game(Engine &white, Engine &black);
+int play_game(Engine &white, Engine &black, bool verbose = false);
 
 struct MatchResult
 {
@@ -91,7 +91,8 @@ struct MatchResult
 // play a multi-game match between two engines
 MatchResult play_match(Engine &white, Engine &black, int games);
 
-// create an engine by name
+// create an engine. "name" is either the name of a builtin engine, or a
+// filename of a description in json format.
 std::unique_ptr<Engine> make_engine(std::string_view name);
 
 } // namespace metis

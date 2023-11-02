@@ -73,7 +73,10 @@ int main(int argc, char **argv)
 		auto right = make_engine(right_engine);
 		left->seed(fmt::format("{}_left", seed));
 		right->seed(fmt::format("{}_right", seed));
-		play_match(*left, *right, ngames);
+		if (ngames == 1)
+			play_game(*left, *right, true);
+		else
+			play_match(*left, *right, ngames);
 	}
 	else /*if (uci->parsed())*/
 	{

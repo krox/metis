@@ -47,9 +47,9 @@ std::string to_string(PieceType pt)
 }
 } // namespace
 
-LinearEvaluator::LinearEvaluator(util::Json json)
+LinearEvaluator::LinearEvaluator(util::Json const &json)
 {
-	for (auto [key, value] : json["terms"].as_object())
+	for (auto [key, value] : json.at("terms").as_object())
 	{
 		auto parts = util::split(key, '-');
 		assert(parts.size() == 2);

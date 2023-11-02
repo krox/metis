@@ -47,7 +47,7 @@ class LinearEvaluator : public Evaluator
   public:
 	// default = no terms = always return 0
 	LinearEvaluator() = default;
-	explicit LinearEvaluator(util::Json /*const&*/ json);
+	explicit LinearEvaluator(util::Json const &json);
 
 	std::vector<Term> const &terms() const { return terms_; }
 	void add_term(Term term) { terms_.push_back(term); }
