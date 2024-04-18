@@ -3,6 +3,7 @@
 #include "metis/board.h"
 #include "metis/engine.h"
 #include "metis/evaluator.h"
+#include "metis/selfplay.h"
 #include "metis/training.h"
 #include "metis/uci.h"
 
@@ -46,9 +47,15 @@ int main(int argc, char **argv)
 	    "train", "optimize weights of a evaluation function using self-play");
 	setup_train_command(*train);
 
+	auto selfplay = app.add_subcommand(
+	    "selfplay",
+	    "play games against itself (typically to be used for training later)");
+	setup_selfplay_command(*selfplay);
+
 	// parse
 	CLI11_PARSE(app, argc, argv);
 
+	return 0;
 	// set up initial position
 	auto state = GameState(fen);
 	for (auto move : util::split_white(initial_moves))

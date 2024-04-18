@@ -9,5 +9,4 @@ namespace metis {
 
 void setup_train_command(CLI::App &app);
 
-void run_training(Engine &engine, LinearEvaluator &eval);
 } // namespace metis
