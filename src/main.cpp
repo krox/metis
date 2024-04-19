@@ -3,6 +3,7 @@
 #include "metis/board.h"
 #include "metis/engine.h"
 #include "metis/evaluator.h"
+#include "metis/match.h"
 #include "metis/selfplay.h"
 #include "metis/training.h"
 #include "metis/uci.h"
@@ -16,30 +17,19 @@ int main(int argc, char **argv)
 	std::string initial_moves = "";
 	bool show_position = false;
 	std::string seed = "";
-	int ngames = 1000;
 
 	// peft options
 	int depth = -1;
 
-	// match option
-	std::string left_engine;
-	std::string right_engine;
-
 	// CLI11 app
 	auto app = CLI::App{"Metis"};
-	app.require_subcommand(0, 1);
+	app.require_subcommand(1, 1);
 	app.add_option("--fen", fen, "FEN");
 	app.add_option("--moves", initial_moves, "Initial moves");
 	app.add_flag("--show-position", show_position, "Show initial position");
 
 	auto perft = app.add_subcommand("perft", "Perft");
 	perft->add_option("-d,--depth", depth, "Depth");
-
-	auto match = app.add_subcommand(
-	    "match", "run a multi-game match between two engines");
-	match->add_option("left_engine", left_engine, "Left engine");
-	match->add_option("right_engine", right_engine, "Right engine");
-	match->add_option("-n,--games", ngames, "Number of games");
 
 	auto uci = app.add_subcommand("uci", "UCI mode");
 	(void)uci;
@@ -51,6 +41,10 @@ int main(int argc, char **argv)
 	    "selfplay",
 	    "play games against itself (typically to be used for training later)");
 	setup_selfplay_command(*selfplay);
+
+	auto match = app.add_subcommand(
+	    "match", "run a (single- or multi-game) match between two engines");
+	setup_match_command(*match);
 
 	// parse
 	CLI11_PARSE(app, argc, argv);
@@ -73,17 +67,6 @@ int main(int argc, char **argv)
 		}
 		else
 			state.perft_ex(depth);
-	}
-	else if (match->parsed())
-	{
-		auto left = make_engine(left_engine);
-		auto right = make_engine(right_engine);
-		left->seed(fmt::format("{}_left", seed));
-		right->seed(fmt::format("{}_right", seed));
-		if (ngames == 1)
-			play_game(*left, *right, true);
-		else
-			play_match(*left, *right, ngames);
 	}
 	else /*if (uci->parsed())*/
 	{
