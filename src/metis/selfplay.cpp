@@ -1,6 +1,7 @@
 #include "metis/selfplay.h"
 #include "metis/engine.h"
 #include "util/io.h"
+#include <omp.h>
 
 namespace metis {
 namespace {
@@ -12,11 +13,15 @@ struct Options
 	bool allow_overwrite = false;
 	bool verbose = false;
 	int max_plies = 400;
+	int nthreads = 0;
 	int64_t count = 1000;
 };
 
 void run_selfplay_command(Options opt)
 {
+	if (opt.nthreads != 0)
+		omp_set_num_threads(opt.nthreads);
+
 	auto engine = make_engine(opt.engine);
 
 	util::File file;
@@ -87,6 +92,7 @@ void setup_selfplay_command(CLI::App &app)
 	app.add_flag("--force", opt->allow_overwrite,
 	             "Allow overwriting existing files");
 	app.add_flag("--verbose", opt->verbose, "Print games to stdout");
+	app.add_option("--threads,-j", opt->nthreads, "Number of threads to use");
 
 	app.callback([opt]() { run_selfplay_command(*opt); });
 }
