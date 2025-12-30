@@ -12,7 +12,7 @@ struct Options
 	std::string filename;
 	bool allow_overwrite = false;
 	bool verbose = false;
-	int max_plies = 400;
+	int max_plies = 200; // typical human game should be ~40 "moves" (=80 plies)
 	int nthreads = 0;
 	int64_t count = 1000;
 };
@@ -65,8 +65,8 @@ void run_selfplay_command(Options opt)
 			}
 			else
 			{
-				fmt::print("game {}/{}: result {}\n", iter + 1, opt.count,
-				           result);
+				fmt::print("game {}/{}: result={}, len={}\n", iter + 1,
+				           opt.count, result, moves.size());
 			}
 
 			if (file)

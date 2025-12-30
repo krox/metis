@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.16.0)
-project(metis LANGUAGES CXX)
+project(metis LANGUAGES C CXX)
 
 include(cmake/CPM.cmake)
 
 CPMAddPackage(
 	NAME util
 	GITHUB_REPOSITORY krox/util
-	GIT_TAG 6ac5c367fd8b9aaca753b9434f80780156138e12
+	GIT_TAG bb706c5385657f87c816a1f8367791f872f6a03e
 )
 
 CPMAddPackage(

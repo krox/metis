@@ -65,22 +65,10 @@ enum class Piece : uint8_t
 };
 
 #define ENABLE_BIT_OPS(T)                                                      \
-	constexpr bool operator!(T a)                                              \
-	{                                                                          \
-		return !(uint8_t(a));                                                  \
-	}                                                                          \
-	constexpr T operator~(T a)                                                 \
-	{                                                                          \
-		return T(~uint8_t(a));                                                 \
-	}                                                                          \
-	constexpr T operator|(T a, T b)                                            \
-	{                                                                          \
-		return T(uint8_t(a) | uint8_t(b));                                     \
-	}                                                                          \
-	constexpr T operator&(T a, T b)                                            \
-	{                                                                          \
-		return T(uint8_t(a) & uint8_t(b));                                     \
-	}                                                                          \
+	constexpr bool operator!(T a) { return !(uint8_t(a)); }                    \
+	constexpr T operator~(T a) { return T(~uint8_t(a)); }                      \
+	constexpr T operator|(T a, T b) { return T(uint8_t(a) | uint8_t(b)); }     \
+	constexpr T operator&(T a, T b) { return T(uint8_t(a) & uint8_t(b)); }     \
 	constexpr T &operator|=(T &a, T b)                                         \
 	{                                                                          \
 		a = a | b;                                                             \
@@ -213,12 +201,17 @@ class Board
 	// starting position for normal chess
 	static Board startpos();
 
-	// parse a FEN string into a board. Throws if the FEN is invalid.
-	static Board from_fen(std::string_view);
-
-	// extended FEN format as used in UCI protocol.
+	// parse an extended fen string, as used in the UCI protocol:
 	// startpos | fen <fenstring> | <fenstring> [moves <movelist>]
-	static Board from_uci(std::string_view);
+	// where <fenstring> consists of up to 6 space separated fields:
+	//   pieces: for example rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR
+	//   side to move: either 'w' or 'b'
+	//   castling rights: subset of 'KQkq' or '-' if none
+	//   en passant square: i.e. "e3", "d6", or '-' if none
+	//   halfmove clock (optional): plies since last capture or pawn move
+	//   fullmove number (optional): starts at 1, incremented after black's move
+	static Board from_fen(util::Parser &);
+	static Board from_fen(std::string_view);
 
 	// access to individual squares (updating bitboards)
 	Piece operator[](int sq) const { return squares_[sq]; }
@@ -297,7 +290,7 @@ class GameState
   public:
 	Board board;
 	GameState() : board(Board::startpos()) {}
-	explicit GameState(std::string_view fen) : board(Board::from_uci(fen)) {}
+	explicit GameState(std::string_view fen) : board(Board::from_fen(fen)) {}
 
 	void push_move(Move move)
 	{
@@ -321,7 +314,7 @@ class GameState
 template <> struct fmt::formatter<metis::Move> : formatter<std::string_view>
 {
 	template <class FormatContext>
-	auto format(metis::Move a, FormatContext &ctx)
+	auto format(metis::Move a, FormatContext &ctx) const
 	{
 		std::string s;
 		s.push_back('a' + a.from % 8);

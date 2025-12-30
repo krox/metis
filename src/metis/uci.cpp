@@ -1,120 +1,141 @@
 #include "metis/uci.h"
+
+#include "fmt/os.h"
+#include "fmt/ostream.h"
 #include "metis/board.h"
 #include "metis/engine.h"
+#include <cassert>
 #include <iostream>
+#include <memory>
+#include <mutex>
+#include <string_view>
+#include <thread>
 
 namespace metis {
 
-namespace {
-bool match(std::string_view &s, std::string_view prefix)
+struct UCI
 {
-	if (s.starts_with(prefix) &&
-	    (s.size() == prefix.size() || s[prefix.size()] == ' '))
-	{
-		s.remove_prefix(prefix.size());
-		return true;
-	}
-	return false;
-}
-} // namespace
+	std::jthread thread_;
+	std::unique_ptr<Engine> engine_;
+	Board board_ = Board::startpos();
+	Move best_move_ = Move::null();
+	std::mutex write_mutex_; // to serialize writes to stdout
 
-void UCIHandler::stop()
-{
-	if (thread_.joinable())
-	{
-		thread_.request_stop();
-		thread_.join();
-	}
-}
+	// stop current search if any
+	void stop();
 
-void UCIHandler::go(std::string_view cmd)
-{
-	// fmt::print("going with '{}'\n", cmd);
-	(void)cmd;
-	// abort previous search (without printing bestmove)
-	if (thread_.joinable())
+	// start a new search for current position
+	void go();
+
+	// print to stdout (+ newline + flush)
+	template <typename... T>
+	void respond(fmt::format_string<T...> msg, T &&...args)
 	{
-		thread_.request_stop();
-		thread_.join();
-	}
+		auto lock = std::scoped_lock(write_mutex_);
+		std::string response = fmt::format(msg, std::forward<T>(args)...);
+		fmt::print("{}\n", response);
+		fflush(stdout);
+		// future: also log commands here?
+	};
+
+	void run();
+};
+
+void UCI::go()
+{
+	stop();
 
 	// lazy init of the engine
 	// (uci protocol suggests to do this not eagerly)
 	if (engine_ == nullptr)
 		engine_ = std::make_unique<MateInOneEngine>();
 
-	auto thread_main = [this](std::stop_token stoken) {
+	thread_ = std::jthread([this](std::stop_token stoken) {
 		engine_->think(
-		    Board(board_),
+		    board_,
 		    [this](AnalysisResult const &r) {
 			    best_move_ = r.best_move;
-			    // could print a status msg here
+			    respond("info pv {}",
+			            best_move_); // should send plenty more info here
 		    },
 		    stoken);
-
 		respond("bestmove {}", best_move_);
-	};
-
-	thread_ = std::jthread(thread_main);
+	});
 }
 
-void UCIHandler::run()
+void UCI::stop()
 {
-	// create log file for debugging using fmt
-	log("starting UCI handler\n");
+	if (thread_.joinable())
+	{
+		thread_.request_stop();
+		thread_.join();
+	}
+}
 
+void UCI::run()
+{
 	std::string line;
 	while (std::getline(std::cin, line))
 	{
-		log("received: '{}'\n", line);
-		std::string_view cmd = util::trim_white(line);
-		if (cmd.empty())
+		auto lexer = util::Parser(line);
+		if (lexer.end())
 			continue;
 
-		if (match(cmd, "uci"))
+		if (lexer.ident("uci"))
 		{
+			lexer.expect_end();
 			respond("id name Metis");
 			respond("uciok");
 		}
-		else if (match(cmd, "isready"))
+		else if (lexer.ident("isready"))
 		{
+			// implicit synchronization point. nothing to do for us really.
+			lexer.expect_end();
 			respond("readyok");
 		}
-		else if (match(cmd, "ucinewgame"))
+		else if (lexer.ident("ucinewgame"))
 		{
-			// TODO: clear transposition table or something?
+			lexer.expect_end();
+			// this indicates the next position will be "from a new game". I
+			// think this can be ignored in practice as new positions are set
+			// using the "position" command anyways. Should probably reset
+			// internal states here.
 		}
-		else if (match(cmd, "position"))
+		else if (lexer.ident("position"))
 		{
-			board_ = Board::from_uci(cmd);
+			board_ = Board::from_fen(lexer);
+			lexer.expect_end();
 		}
 
-		else if (match(cmd, "go"))
+		else if (lexer.ident("go"))
 		{
-			go(cmd);
+			// ignore any parameters for new...
+			go();
 		}
 
-		else if (match(cmd, "stop"))
+		else if (lexer.ident("stop"))
 		{
+			lexer.expect_end();
 			stop();
 		}
-
-		else if (match(cmd, "setoption"))
+		else if (lexer.ident("setoption"))
 		{
-			/* ignored */
+			// ignore any options for now
 		}
-		else if (match(cmd, "quit"))
+		else if (lexer.ident("quit"))
 		{
-			if (thread_.joinable())
-			{
-				thread_.request_stop();
-				thread_.join();
-			}
+			stop();
 			return;
 		}
 		else
-			log("ignoring unknown command: {}\n", cmd);
+			respond("info string ignoring unknown command: {}", line);
 	}
+}
+
+void run_uci()
+{
+	UCI uci;
+	uci.run();
 }
 
 } // namespace metis

@@ -121,94 +121,91 @@ Board Board::startpos() { return from_fen(starting_fen); }
 
 Board Board::from_fen(std::string_view fen)
 {
+	auto parser = util::Parser(fen);
+	return from_fen(parser);
+}
+
+Board Board::from_fen(util::Parser &parser)
+{
+	// startpos | fen <fenstring> | <fenstring> [moves <movelist>]
 	Board b;
 
 	static constexpr std::string_view msg = "invalid FEN string";
-	auto parts = util::split_white(fen);
-	util::check(4 <= parts.size() && parts.size() <= 6, msg);
 
-	// parts[0]: pieces on the board
-	auto ranks = util::split(parts[0], '/');
-	util::check(ranks.size() == 8, msg);
-	for (size_t rank = 0; rank < 8; ++rank)
+	if (parser.ident("startpos"))
 	{
-		auto file = 0;
-		for (auto c : ranks[rank])
+		b = Board::startpos();
+	}
+	else
+	{
+		parser.ident("fen"); // optional 'fen' keyword
+
+		// parts[0]: pieces on the board
+		auto ranks = util::split(parser.word(), '/');
+		util::check(ranks.size() == 8, msg);
+		for (size_t rank = 0; rank < 8; ++rank)
 		{
-			if ('1' <= c && c <= '8')
-				file += c - '0';
-			else
+			auto file = 0;
+			for (auto c : ranks[rank])
 			{
-				util::check(file < 8, msg);
-				b.place_piece(char_to_piece(c), (7 - rank) * 8 + file);
-				++file;
+				if ('1' <= c && c <= '8')
+					file += c - '0';
+				else
+				{
+					util::check(file < 8, msg);
+					b.place_piece(char_to_piece(c), (7 - rank) * 8 + file);
+					++file;
+				}
 			}
+			util::check(file == 8, msg);
 		}
-		util::check(file == 8, msg);
-	}
 
-	// parts[1]: who's turn it is
-	util::check(parts[1] == "w" || parts[1] == "b", msg);
-	b.color_to_move = parts[1] == "w" ? Color::White : Color::Black;
+		// parts[1]: who's turn it is
+		auto side = parser.word();
+		util::check(side == "w" || side == "b", msg);
+		b.color_to_move = side == "w" ? Color::White : Color::Black;
 
-	// parts[2]: castling rights
-	b.castling_rights = CastlingRights::None;
-	if (parts[2] != "-")
-		for (char c : parts[2])
+		// parts[2]: castling rights
+		b.castling_rights = CastlingRights::None;
+		if (!parser.match("-"))
+			for (char c : parser.word())
+			{
+				if (c == 'K')
+					b.castling_rights |= CastlingRights::WhiteKingSide;
+				else if (c == 'Q')
+					b.castling_rights |= CastlingRights::WhiteQueenSide;
+				else if (c == 'k')
+					b.castling_rights |= CastlingRights::BlackKingSide;
+				else if (c == 'q')
+					b.castling_rights |= CastlingRights::BlackQueenSide;
+				else
+					util::check(false, msg);
+			}
+
+		// parts[3]: en passant square
+		if (auto ep = parser.word(); ep != "-")
 		{
-			if (c == 'K')
-				b.castling_rights |= CastlingRights::WhiteKingSide;
-			else if (c == 'Q')
-				b.castling_rights |= CastlingRights::WhiteQueenSide;
-			else if (c == 'k')
-				b.castling_rights |= CastlingRights::BlackKingSide;
-			else if (c == 'q')
-				b.castling_rights |= CastlingRights::BlackQueenSide;
-			else
-				util::check(false, msg);
+			util::check(ep.size() == 2, msg);
+			util::check('a' <= ep[0] && ep[0] <= 'h', msg);
+			util::check('1' <= ep[1] && ep[1] <= '8', msg);
+			b.ep_square = square((ep[0] - 'a') + 8 * (ep[1] - '1'));
 		}
 
-	// parts[3]: en passant square
-	if (parts[3] != "-")
-	{
-		util::check(parts[3].size() == 2, msg);
-		util::check('a' <= parts[3][0] && parts[3][0] <= 'h', msg);
-		util::check('1' <= parts[3][1] && parts[3][1] <= '8', msg);
-		b.ep_square = square((parts[3][0] - 'a') + 8 * (parts[3][1] - '1'));
+		// skip optional halfmove/fullmove numbers (TODO...)
+		parser.integer();
+		parser.integer();
 	}
 
-	// parts[4]: halfmove clock (optional)
-	// TODO
+	if (parser.ident("moves"))
+	{
+		while (!parser.end())
+			b.make_move(Move(parser.expect_ident()));
+	}
 
-	// parts[5]: fullmove number (optional)
-	// TODO
+	parser.expect_end();
 
 	util::check(b.valid(), msg);
 	b.compute_attacks();
-	return b;
-}
-
-Board Board::from_uci(std::string_view s)
-{
-	// find 'moves' keyword
-	std::string_view moves;
-	if (size_t pos = s.find("moves"); pos != size_t(-1))
-	{
-		moves = s.substr(pos + 5);
-		s = s.substr(0, pos);
-	}
-
-	s = util::trim_white(s);
-	Board b;
-	if (s == "startpos")
-		b = startpos();
-	else if (s.starts_with("fen"))
-		b = from_fen(s.substr(3));
-	else
-		b = from_fen(s);
-
-	for (auto &token : util::split_white(moves))
-		b.make_move(Move(token));
 	return b;
 }
 
