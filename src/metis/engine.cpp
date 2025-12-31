@@ -53,6 +53,48 @@ void MateInOneEngine::think(Board const &board, ProgressCallback progress,
 	progress(r);
 }
 
+void CaptureEngine::think(Board const &board, ProgressCallback progress,
+                          std::stop_token stoken)
+{
+	(void)stoken;
+	MoveList candidates;
+	generate_pseudolegal_moves(board, candidates);
+
+	MoveList moves;
+	MoveList capture_moves;
+	for (auto move : candidates)
+	{
+		auto new_board = board;
+		new_board.make_move(move);
+		if (!new_board.legal())
+			continue;
+
+		if (new_board.checkmate())
+		{
+			progress({.best_move = move});
+			return;
+		}
+
+		if (board[move.to] != Piece::Empty ||
+		    (piecetype(board[move.from]) == PieceType::Pawn &&
+		     square(move.to) == board.ep_square))
+			capture_moves.push_back(move);
+		else
+			moves.push_back(move);
+	}
+
+	if (!capture_moves.empty())
+	{
+		// take random capture
+		progress({.best_move = capture_moves[rng() % capture_moves.size()]});
+		return;
+	}
+
+	// otherwise random move
+	assert(!moves.empty());
+	progress({.best_move = moves[rng() % moves.size()]});
+}
+
 int play_game(Engine &white, Engine &black, bool verbose)
 {
 	auto board = Board::startpos();

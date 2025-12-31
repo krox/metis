@@ -38,8 +38,7 @@ class Engine
 	AnalysisResult think(Board const &board, std::stop_token stoken = {})
 	{
 		AnalysisResult result;
-		think(
-		    board, [&](AnalysisResult const &r) { result = r; }, stoken);
+		think(board, [&](AnalysisResult const &r) { result = r; }, stoken);
 		return result;
 	}
 
@@ -75,6 +74,19 @@ class MateInOneEngine final : public Engine
 	std::unique_ptr<Engine> clone() const override
 	{
 		return std::make_unique<MateInOneEngine>(*this);
+	}
+};
+
+// takes mate in one or random move. Prefers captures to non-captures
+class CaptureEngine final : public Engine
+{
+  public:
+	void think(Board const &board, ProgressCallback progress,
+	           std::stop_token stoken) override;
+
+	std::unique_ptr<Engine> clone() const override
+	{
+		return std::make_unique<CaptureEngine>(*this);
 	}
 };
 

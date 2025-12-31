@@ -48,7 +48,7 @@ void UCI::go()
 	// lazy init of the engine
 	// (uci protocol suggests to do this not eagerly)
 	if (engine_ == nullptr)
-		engine_ = std::make_unique<MateInOneEngine>();
+		engine_ = std::make_unique<CaptureEngine>();
 
 	thread_ = std::jthread([this](std::stop_token stoken) {
 		engine_->think(
