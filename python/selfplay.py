@@ -35,16 +35,18 @@ def generate_selfplay_games(engine_path, num_games,
                 board.push(result.move)
                 total_moves += 1
 
-            res_str = board.result()
-            r = 1 if res_str == "1-0" else (-1 if res_str == "0-1" else 0)
-            f.write(make_line(moves, r) + "\n")
+            res = board.result()
+            f.write(make_line(moves, res) + "\n")
 
-            if r == 1:
+            if res == "1-0":
                 white_wins += 1
-            elif r == -1:
+            elif res == "0-1":
                 black_wins += 1
-            else:
+            elif res == "1/2-1/2" or res == "*":
+                # note: '*' indicates unfinished game
                 draws += 1
+            else:
+                assert False, f"Unknown result: {res}"
 
             avg_move_time = (
                 time.perf_counter() - start_time) / total_moves
