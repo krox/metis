@@ -25,6 +25,7 @@ int NegamaxEngine::search(Board const &board, int depth, int alpha, int beta,
 
 	if (depth <= 0)
 	{
+		node_count_++;
 		best_score = eval_->evaluate(board);
 		if (board.color_to_move != Color::White)
 			best_score = -best_score;
@@ -66,22 +67,24 @@ int NegamaxEngine::search(Board board, Move move, int depth, int alpha,
 }
 
 void NegamaxEngine::think(Board const &board, ProgressCallback progress,
-                          std::stop_token stoken)
+                          std::stop_token stoken, int time_limit)
 {
 	using Clock = std::chrono::steady_clock;
 	typename Clock::time_point search_start = Clock::now();
 
 	int slack = 5;
+	int movetime = std::min(options_.time_limit, time_limit);
+	node_count_ = 0;
 
 	auto should_stop = [&]() {
 		if (stoken.stop_requested())
 			return true;
-		if (options_.time_limit != INT_MAX)
+		if (movetime != INT_MAX)
 		{
 			auto elapsed =
 			    std::chrono::duration_cast<std::chrono::milliseconds>(
 			        Clock::now() - search_start);
-			if (elapsed.count() >= options_.time_limit)
+			if (elapsed.count() >= movetime)
 				return true;
 		}
 		return false;
@@ -98,6 +101,7 @@ void NegamaxEngine::think(Board const &board, ProgressCallback progress,
 	assert(!moves.empty());
 	if (moves.size() == 1)
 	{
+		// only one legal move, no need to send any detailed info
 		progress({.best_move = moves[0]});
 		return;
 	}
@@ -129,7 +133,13 @@ void NegamaxEngine::think(Board const &board, ProgressCallback progress,
 				second_best_move = best_move;
 				best_score = score;
 				best_move = move;
-				progress({.best_move = best_move});
+
+				AnalysisResult result;
+				result.best_move = best_move;
+				result.score = best_score;
+				result.depth = depth;
+				result.nodes = node_count_;
+				progress(result);
 			}
 			else if (score > second_best_score)
 			{

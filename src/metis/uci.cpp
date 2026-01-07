@@ -19,13 +19,14 @@ struct UCI
 	std::unique_ptr<Engine> engine_;
 	Board board_ = Board::startpos();
 	Move best_move_ = Move::null();
-	std::mutex write_mutex_; // to serialize writes to stdout
+	std::string engine_filename_; // if empty, use built-in engine
+	std::mutex write_mutex_;      // to serialize writes to stdout
 
 	// stop current search if any
 	void stop();
 
 	// start a new search for current position
-	void go();
+	void go(int time_limit);
 
 	// print to stdout (+ newline + flush)
 	template <typename... T>
@@ -41,24 +42,28 @@ struct UCI
 	void run();
 };
 
-void UCI::go()
+void UCI::go(int time_limit)
 {
 	stop();
 
 	// lazy init of the engine
 	// (uci protocol suggests to do this not eagerly)
 	if (engine_ == nullptr)
-		engine_ = std::make_unique<CaptureEngine>();
-
-	thread_ = std::jthread([this](std::stop_token stoken) {
+	{
+		if (engine_filename_ != "")
+			engine_ = make_engine(engine_filename_);
+		else
+			engine_ = std::make_unique<CaptureEngine>();
+	}
+	thread_ = std::jthread([this, time_limit](std::stop_token stoken) {
 		engine_->think(
 		    board_,
 		    [this](AnalysisResult const &r) {
 			    best_move_ = r.best_move;
-			    respond("info pv {}",
-			            best_move_); // should send plenty more info here
+			    respond("info pv {} score cp {} depth {} nodes {}", best_move_,
+			            r.score, r.depth, r.nodes);
 		    },
-		    stoken);
+		    stoken, time_limit);
 		respond("bestmove {}", best_move_);
 	});
 }
@@ -74,6 +79,7 @@ void UCI::stop()
 
 void UCI::run()
 {
+	respond("Welcome to Metis. This is a UCI-compatible chess engine.");
 	std::string line;
 	while (std::getline(std::cin, line))
 	{
@@ -109,8 +115,19 @@ void UCI::run()
 
 		else if (lexer.ident("go"))
 		{
-			// ignore any parameters for new...
-			go();
+			int time_limit = INT_MAX;
+			while (!lexer.end())
+			{
+				if (lexer.ident("movetime"))
+				{
+					time_limit = lexer.expect_int();
+				}
+				else
+				{
+					lexer.word(); // TODO: dont ignore unknown...
+				}
+			}
+			go(time_limit);
 		}
 
 		else if (lexer.ident("stop"))
@@ -126,6 +143,13 @@ void UCI::run()
 		{
 			stop();
 			return;
+		}
+		else if (lexer.ident("loadengine"))
+		{
+			stop();
+			engine_ = nullptr;
+			engine_filename_ = lexer.word();
+			lexer.expect_end();
 		}
 		else
 			respond("info string ignoring unknown command: {}", line);

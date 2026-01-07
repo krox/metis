@@ -5,7 +5,7 @@
 namespace metis {
 
 void RandomEngine::think(Board const &board, ProgressCallback progress,
-                         std::stop_token stoken)
+                         std::stop_token stoken, int)
 {
 	(void)stoken;
 
@@ -23,7 +23,7 @@ void RandomEngine::think(Board const &board, ProgressCallback progress,
 }
 
 void MateInOneEngine::think(Board const &board, ProgressCallback progress,
-                            std::stop_token stoken)
+                            std::stop_token stoken, int)
 {
 	(void)stoken;
 
@@ -54,7 +54,7 @@ void MateInOneEngine::think(Board const &board, ProgressCallback progress,
 }
 
 void CaptureEngine::think(Board const &board, ProgressCallback progress,
-                          std::stop_token stoken)
+                          std::stop_token stoken, int)
 {
 	(void)stoken;
 	MoveList candidates;

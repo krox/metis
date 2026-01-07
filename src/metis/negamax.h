@@ -24,10 +24,6 @@ class NegamaxEngine final : public Engine
 		Options() = default;
 		Options(util::Json const &json)
 		{
-			depth_limit = json.value<int>("depth_limit", INT_MAX);
-			node_limit = json.value<int>("node_limit", INT_MAX);
-			time_limit = json.value<int>("time_limit", INT_MAX);
-
 			qsearch = json.value<bool>("qsearch", true);
 		}
 	};
@@ -35,6 +31,9 @@ class NegamaxEngine final : public Engine
   private:
 	Options options_;
 	std::shared_ptr<Evaluator> eval_;
+
+	// statistics
+	int64_t node_count_ = 0;
 
 	// recursive search function
 	int search(Board const &, int depth, int alpha, int beta,
@@ -51,7 +50,8 @@ class NegamaxEngine final : public Engine
 		return std::make_unique<NegamaxEngine>(*this);
 	}
 
-	void think(Board const &, ProgressCallback, std::stop_token) override;
+	void think(Board const &, ProgressCallback, std::stop_token,
+	           int time_limit = INT_MAX) override;
 };
 
 } // namespace metis
