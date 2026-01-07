@@ -151,6 +151,18 @@ void UCI::run()
 			engine_filename_ = lexer.word();
 			lexer.expect_end();
 		}
+		else if (lexer.ident("d"))
+		{
+			lexer.expect_end();
+			board_.print();
+		}
+		else if (lexer.ident("move"))
+		{
+			stop();
+			auto move = Move(lexer.word());
+			lexer.expect_end();
+			board_.make_move(move);
+		}
 		else
 			respond("info string ignoring unknown command: {}", line);
 	}
