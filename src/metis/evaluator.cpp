@@ -1,6 +1,5 @@
 #include "metis/evaluator.h"
 
-#include "Eigen/Dense"
 #include "metis/board.h"
 #include "util/json.h"
 #include <bit>
@@ -60,13 +59,6 @@ LinearEvaluator::LinearEvaluator(util::Json const &json)
 	}
 }
 
-void LinearEvaluator::set_weights(Eigen::VectorXf const &weights)
-{
-	assert(weights.size() == (int)terms_.size());
-	for (size_t i = 0; i < terms_.size(); ++i)
-		terms_[i].score = int(1e4 * weights[i]);
-}
-
 int LinearEvaluator::evaluate(Board const &board) const
 {
 	int score = 0;
@@ -78,21 +70,6 @@ int LinearEvaluator::evaluate(Board const &board) const
 		         (popcount(term.bb & bb_white) - popcount(term.bb & bb_black));
 	}
 	return score;
-}
-
-void LinearEvaluator::get_features(Board const &board,
-                                   Eigen::VectorXf &features) const
-{
-	assert(features.size() == (int)terms_.size());
-
-	for (size_t i = 0; i < terms_.size(); ++i)
-	{
-		auto term = terms_[i];
-		auto bb_white = board.bb_piece(term.pt, Color::White);
-		auto bb_black = board.bb_piece(term.pt, Color::Black);
-		features[i] =
-		    popcount(term.bb & bb_white) - popcount(term.bb & bb_black);
-	}
 }
 
 util::Json to_json(LinearEvaluator const &eval)

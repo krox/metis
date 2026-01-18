@@ -3,12 +3,6 @@
 #include "metis/board.h"
 #include "util/json.h"
 
-// forward declare Eigen::VectorXf
-namespace Eigen {
-template <typename, int, int, int, int, int> class Matrix;
-using VectorXf = Matrix<float, -1, 1, 0, -1, 1>;
-} // namespace Eigen
-
 namespace metis {
 
 class Evaluator
@@ -51,11 +45,6 @@ class LinearEvaluator : public Evaluator
 
 	std::vector<Term> const &terms() const { return terms_; }
 	void add_term(Term term) { terms_.push_back(term); }
-
-	void set_weights(Eigen::VectorXf const &weights);
-
-	// get the features for a given board. Used for training
-	void get_features(Board const &board, Eigen::VectorXf &features) const;
 
 	int evaluate(Board const &board) const override;
 };

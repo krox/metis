@@ -5,7 +5,6 @@
 #include "metis/evaluator.h"
 #include "metis/match.h"
 #include "metis/selfplay.h"
-#include "metis/training.h"
 #include "metis/uci.h"
 
 using namespace metis;
@@ -29,10 +28,6 @@ int main(int argc, char **argv)
 
 	auto perft = app.add_subcommand("perft", "Perft");
 	perft->add_option("-d,--depth", depth, "Depth");
-
-	auto train = app.add_subcommand(
-	    "train", "optimize weights of a evaluation function using self-play");
-	setup_train_command(*train);
 
 	auto selfplay = app.add_subcommand(
 	    "selfplay",
