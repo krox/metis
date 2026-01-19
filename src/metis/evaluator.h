@@ -22,6 +22,15 @@ class Evaluator
 	// virtual int16_t evaluate_move(Board const&, Move) = 0
 };
 
+// simple material-only evaluator with standard piece values
+class MaterialEvaluator : public Evaluator
+{
+  public:
+	MaterialEvaluator() = default;
+	// in milli-pawns
+	int evaluate(Board const &board) const override;
+};
+
 // Equivalent to piece-square tables, but written as a linear combination of
 //     `popcount(bb_pieces(piece) & mask)`
 // Coefficients should be trainable by simple linear regression.

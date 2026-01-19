@@ -2,7 +2,9 @@
 
 #include "metis/board.h"
 #include "util/json.h"
+#include <algorithm>
 #include <bit>
+#include <cstdlib>
 
 namespace metis {
 
@@ -45,6 +47,34 @@ std::string to_string(PieceType pt)
 	}
 }
 } // namespace
+
+int MaterialEvaluator::evaluate(Board const &board) const
+{
+	// part 1: material value
+	int w_pawns = popcount(board.bb_piece(PieceType::Pawn, Color::White));
+	int b_pawns = popcount(board.bb_piece(PieceType::Pawn, Color::Black));
+	int w_knights = popcount(board.bb_piece(PieceType::Knight, Color::White));
+	int b_knights = popcount(board.bb_piece(PieceType::Knight, Color::Black));
+	int w_bishops = popcount(board.bb_piece(PieceType::Bishop, Color::White));
+	int b_bishops = popcount(board.bb_piece(PieceType::Bishop, Color::Black));
+	int w_rooks = popcount(board.bb_piece(PieceType::Rook, Color::White));
+	int b_rooks = popcount(board.bb_piece(PieceType::Rook, Color::Black));
+	int w_queens = popcount(board.bb_piece(PieceType::Queen, Color::White));
+	int b_queens = popcount(board.bb_piece(PieceType::Queen, Color::Black));
+
+	int score = 0;
+	score += 1000 * (w_pawns - b_pawns);
+	score += 3100 * (w_knights - b_knights);
+	score += 3300 * (w_bishops - b_bishops);
+	score += 5000 * (w_rooks - b_rooks);
+	score += 9000 * (w_queens - b_queens);
+
+	// part 2: slight bonus for board control (intended as tie-breaker in the
+	// opening)
+	score += 5 * (popcount(board.bb_attacks(Color::White)) -
+	              popcount(board.bb_attacks(Color::Black)));
+	return score;
+}
 
 LinearEvaluator::LinearEvaluator(util::Json const &json)
 {

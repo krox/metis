@@ -64,7 +64,8 @@ class NegamaxEngine final : public Engine
 	                          int beta);
 
   public:
-	explicit NegamaxEngine(util::Json const &j);
+	explicit NegamaxEngine(std::shared_ptr<Evaluator> const &evaluator,
+	                       Options const &opts);
 
 	virtual ~NegamaxEngine() = default;
 	std::unique_ptr<Engine> clone() const override

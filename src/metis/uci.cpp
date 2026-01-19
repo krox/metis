@@ -19,8 +19,9 @@ struct UCI
 	std::unique_ptr<Engine> engine_;
 	Board board_ = Board::startpos();
 	Move best_move_ = Move::null();
-	std::string engine_filename_; // if empty, use built-in engine
-	std::mutex write_mutex_;      // to serialize writes to stdout
+	std::string engine_name_ =
+	    "material";          // either filename or some known names
+	std::mutex write_mutex_; // to serialize writes to stdout
 
 	// stop current search if any
 	void stop();
@@ -49,12 +50,8 @@ void UCI::go(int time_limit)
 	// lazy init of the engine
 	// (uci protocol suggests to do this not eagerly)
 	if (engine_ == nullptr)
-	{
-		if (engine_filename_ != "")
-			engine_ = make_engine(engine_filename_);
-		else
-			engine_ = std::make_unique<CaptureEngine>();
-	}
+		engine_ = make_engine(engine_name_);
+
 	thread_ = std::jthread([this, time_limit](std::stop_token stoken) {
 		engine_->think(
 		    board_,
@@ -91,6 +88,8 @@ void UCI::run()
 		{
 			lexer.expect_end();
 			respond("id name Metis");
+			respond("id author Simon Bürger");
+			respond("option name engine type string");
 			respond("uciok");
 		}
 		else if (lexer.ident("isready"))
@@ -137,19 +136,24 @@ void UCI::run()
 		}
 		else if (lexer.ident("setoption"))
 		{
-			// ignore any options for now
+			lexer.expect_ident("name");
+			if (lexer.ident("engine"))
+			{
+				stop();
+				engine_ = nullptr;
+				lexer.expect_ident("value");
+				engine_name_ = lexer.word();
+				lexer.expect_end();
+			}
+			else
+			{
+				respond("info string ignoring unknown option: {}", line);
+			}
 		}
 		else if (lexer.ident("quit"))
 		{
 			stop();
 			return;
-		}
-		else if (lexer.ident("loadengine"))
-		{
-			stop();
-			engine_ = nullptr;
-			engine_filename_ = lexer.word();
-			lexer.expect_end();
 		}
 		else if (lexer.ident("d"))
 		{

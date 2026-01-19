@@ -176,6 +176,14 @@ std::unique_ptr<Engine> make_engine(std::string_view name)
 		return std::make_unique<RandomEngine>();
 	if (name == "mate-in-one")
 		return std::make_unique<MateInOneEngine>();
+	if (name == "capture")
+		return std::make_unique<CaptureEngine>();
+	if (name == "material")
+	{
+		auto evaluator = std::make_shared<MaterialEvaluator>();
+		return std::make_unique<NegamaxEngine>(evaluator,
+		                                       NegamaxEngine::Options{});
+	}
 
 	// json description
 	if (name.find(".json") != std::string_view::npos)
@@ -183,7 +191,11 @@ std::unique_ptr<Engine> make_engine(std::string_view name)
 		auto json = util::Json::parse_file(name);
 
 		if (json.at("type").get<std::string>() == "negamax")
-			return std::make_unique<NegamaxEngine>(json);
+		{
+			auto evaluator = std::make_shared<LinearEvaluator>(json.at("eval"));
+			return std::make_unique<NegamaxEngine>(
+			    evaluator, NegamaxEngine::Options(json));
+		}
 		else
 			throw std::runtime_error("unknown engine type in json");
 	}

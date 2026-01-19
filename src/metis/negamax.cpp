@@ -7,11 +7,10 @@
 
 namespace metis {
 
-NegamaxEngine::NegamaxEngine(util::Json const &j)
-{
-	options_ = Options(j);
-	eval_ = std::make_shared<LinearEvaluator>(j.at("eval"));
-}
+NegamaxEngine::NegamaxEngine(std::shared_ptr<Evaluator> const &evaluator,
+                             Options const &opts)
+    : options_{opts}, eval_(evaluator)
+{}
 
 std::optional<int> NegamaxEngine::search(Board const &board, int depth,
                                          int alpha, int beta)
@@ -104,7 +103,7 @@ void NegamaxEngine::think(Board const &board, ProgressCallback progress,
 	node_limit_ = INT_MAX; // TODO
 	time_limit_ = time_limit;
 	stoken_ = stoken;
-	int depth_limit = INT_MAX;
+	int depth_limit = 80; // safeguard
 
 	// generate all legal moves
 	MoveList moves;
