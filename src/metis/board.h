@@ -6,6 +6,7 @@
 #include "util/vector.h"
 #include <array>
 #include <cassert>
+#include <cstdint>
 
 namespace metis {
 
@@ -173,6 +174,7 @@ class Board
 	std::array<Piece, 64> squares_;
 	std::array<Bitboard, 8> bbs_;     // {black, white, pawn, knight, ...}
 	std::array<Bitboard, 2> attacks_; // {black, white}
+	uint64_t zobrist_key_ = 0;
 
 	// updates 'bbs_' bitboards, but not the attack bitboards. (thus private)
 	void place_piece(Piece p, int sq);
@@ -180,6 +182,10 @@ class Board
 
 	// (re-)compute the attack bitboards
 	void compute_attacks();
+
+	// recompute zobrist key from scratch (for initialization / validation
+	// paths)
+	void recompute_zobrist();
 
   public:
 	// some special game state to keep track of (TODO: make more private)
@@ -201,15 +207,15 @@ class Board
 	// starting position for normal chess
 	static Board startpos();
 
-	// parse an extended fen string, as used in the UCI protocol:
-	// startpos | fen <fenstring> | <fenstring> [moves <movelist>]
-	// where <fenstring> consists of up to 6 space separated fields:
+	// parse a fen string consisting of up to 6 space separated fields:
 	//   pieces: for example rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR
 	//   side to move: either 'w' or 'b'
 	//   castling rights: subset of 'KQkq' or '-' if none
 	//   en passant square: i.e. "e3", "d6", or '-' if none
 	//   halfmove clock (optional): plies since last capture or pawn move
 	//   fullmove number (optional): starts at 1, incremented after black's move
+	// for convenience, this function also accepts 'startpos' and an optional
+	// 'fen' prefix
 	static Board from_fen(util::Parser &);
 	static Board from_fen(std::string_view);
 
@@ -278,31 +284,45 @@ class Board
 	// does not check legality of move
 	void make_move(Move move);
 
+	// hash key for transposition/repetition use-cases.
+	uint64_t zobrist() const { return zobrist_key_; }
+
 	// print human-readable board to stdout
 	void print() const;
 };
 
-// stack of board positions
+// game state with full move history
 class GameState
 {
 	util::vector<Board> stack_;
 
   public:
 	Board board;
-	GameState() : board(Board::startpos()) {}
-	explicit GameState(std::string_view fen) : board(Board::from_fen(fen)) {}
+	util::vector<uint64_t> history;
+
+	GameState() : board(Board::startpos()), history{board.zobrist()} {}
+	explicit GameState(Board const &b) : board(b), history{board.zobrist()} {}
+	explicit GameState(std::string_view fen)
+	    : board(Board::from_fen(fen)), history{board.zobrist()}
+	{}
 
 	void push_move(Move move)
 	{
 		stack_.push_back(board);
 		board.make_move(move);
+		history.push_back(board.zobrist());
 	}
 
 	void pop_move()
 	{
 		assert(!stack_.empty());
 		board = stack_.pop_back();
+		if (!history.empty())
+			history.pop_back();
 	}
+
+	static GameState from_uci(util::Parser &);
+	static GameState from_uci(std::string_view);
 
 	// counts number of legal games with d plies
 	int64_t perft(int depth);

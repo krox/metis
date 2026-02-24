@@ -32,10 +32,13 @@ void run_selfplay_command(Options opt)
 		file.write(int32_t(opt.count));
 	}
 
-#pragma omp parallel for schedule(dynamic, 1) shared(engine)
+#pragma omp parallel for schedule(dynamic, 1)
 	for (int64_t iter = 0; iter < opt.count; ++iter)
 	{
+		auto game_engine = engine->clone();
 		auto board = Board::startpos();
+		util::vector<uint64_t> history;
+		history.push_back(board.zobrist());
 		std::vector<Move> moves;
 		int32_t result = 0;
 		int halfmoves = 0;
@@ -49,8 +52,10 @@ void run_selfplay_command(Options opt)
 			if (board.draw() || halfmoves >= opt.max_plies)
 				break;
 
-			auto move = engine->think(board).best_move;
+			auto move =
+			    game_engine->think(board, {}, INT_MAX, &history).best_move;
 			board.make_move(move);
+			history.push_back(board.zobrist());
 			moves.push_back(move);
 		}
 

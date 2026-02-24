@@ -35,16 +35,18 @@ class Engine
 	// iterative deepening). Stops using the stop_token or when some limit is
 	// reached (max_time, max_depth, max_nodes, ...)
 	virtual void think(Board const &board, ProgressCallback progress,
-	                   std::stop_token stoken, int time_limit = INT_MAX) = 0;
+	                   std::stop_token stoken, int time_limit = INT_MAX,
+	                   util::vector<uint64_t> const *history = nullptr) = 0;
 
 	// simplified version of think() that just returns the final result
 	AnalysisResult think(Board const &board, std::stop_token stoken = {},
-	                     int time_limit = INT_MAX)
+	                     int time_limit = INT_MAX,
+	                     util::vector<uint64_t> const *history = nullptr)
 	{
 		AnalysisResult result;
 		think(
 		    board, [&](AnalysisResult const &r) { result = r; }, stoken,
-		    time_limit);
+		    time_limit, history);
 		return result;
 	}
 
@@ -62,7 +64,8 @@ class RandomEngine final : public Engine
 {
   public:
 	void think(Board const &board, ProgressCallback progress,
-	           std::stop_token stoken, int) override;
+	           std::stop_token stoken, int,
+	           util::vector<uint64_t> const *history = nullptr) override;
 
 	std::unique_ptr<Engine> clone() const override
 	{
@@ -75,7 +78,8 @@ class MateInOneEngine final : public Engine
 {
   public:
 	void think(Board const &board, ProgressCallback progress,
-	           std::stop_token stoken, int) override;
+	           std::stop_token stoken, int,
+	           util::vector<uint64_t> const *history = nullptr) override;
 
 	std::unique_ptr<Engine> clone() const override
 	{
@@ -88,7 +92,8 @@ class CaptureEngine final : public Engine
 {
   public:
 	void think(Board const &board, ProgressCallback progress,
-	           std::stop_token stoken, int) override;
+	           std::stop_token stoken, int,
+	           util::vector<uint64_t> const *history = nullptr) override;
 
 	std::unique_ptr<Engine> clone() const override
 	{

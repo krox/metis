@@ -17,7 +17,7 @@ struct UCI
 {
 	std::jthread thread_;
 	std::unique_ptr<Engine> engine_;
-	Board board_ = Board::startpos();
+	GameState state_;
 	Move best_move_ = Move::null();
 	std::string engine_name_ =
 	    "material";          // either filename or some known names
@@ -54,13 +54,14 @@ void UCI::go(int time_limit)
 
 	thread_ = std::jthread([this, time_limit](std::stop_token stoken) {
 		engine_->think(
-		    board_,
+		    state_.board,
 		    [this](AnalysisResult const &r) {
 			    best_move_ = r.best_move;
-			    respond("info pv {} score cp {} depth {} nodes {}", best_move_,
-			            r.score, r.depth, r.nodes);
+			    if (r.depth >= 0)
+				    respond("info pv {} score cp {} depth {} nodes {}",
+				            best_move_, r.score, r.depth, r.nodes);
 		    },
-		    stoken, time_limit);
+		    stoken, time_limit, &state_.history);
 		respond("bestmove {}", best_move_);
 	});
 }
@@ -108,8 +109,7 @@ void UCI::run()
 		}
 		else if (lexer.ident("position"))
 		{
-			board_ = Board::from_fen(lexer);
-			lexer.expect_end();
+			state_ = GameState::from_uci(lexer);
 		}
 
 		else if (lexer.ident("go"))
@@ -158,14 +158,14 @@ void UCI::run()
 		else if (lexer.ident("d"))
 		{
 			lexer.expect_end();
-			board_.print();
+			state_.board.print();
 		}
 		else if (lexer.ident("move"))
 		{
 			stop();
 			auto move = Move(lexer.word());
 			lexer.expect_end();
-			board_.make_move(move);
+			state_.push_move(move);
 		}
 		else
 			respond("info string ignoring unknown command: {}", line);

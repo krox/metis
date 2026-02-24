@@ -12,6 +12,16 @@ NegamaxEngine::NegamaxEngine(std::shared_ptr<Evaluator> const &evaluator,
     : options_{opts}, eval_(evaluator)
 {}
 
+bool NegamaxEngine::is_threefold_repetition(Board const &board) const
+{
+	auto key = board.zobrist();
+	int repetitions = 0;
+	for (auto const &pos : state_.history)
+		if (pos == key)
+			++repetitions;
+	return repetitions >= 3;
+}
+
 std::optional<int> NegamaxEngine::search(Board const &board, int depth,
                                          int alpha, int beta)
 {
@@ -43,6 +53,8 @@ std::optional<int> NegamaxEngine::search(Board const &board, int depth,
 
 	if (board.checkmate())
 		return -31000;
+	if (is_threefold_repetition(board))
+		return 0;
 	if (board.draw())
 		return 0;
 
@@ -82,7 +94,11 @@ std::optional<int> NegamaxEngine::search(Board board, Move move, int depth,
                                          int alpha, int beta)
 {
 	board.make_move(move);
+	if (!board.legal())
+		return -32000;
+	state_.history.push_back(board.zobrist());
 	auto score = search(board, depth - 1, -beta, -alpha);
+	state_.history.pop_back();
 	if (!score)
 		return {};
 	*score = -*score;
@@ -96,13 +112,20 @@ std::optional<int> NegamaxEngine::search(Board board, Move move, int depth,
 }
 
 void NegamaxEngine::think(Board const &board, ProgressCallback progress,
-                          std::stop_token stoken, int time_limit)
+                          std::stop_token stoken, int time_limit,
+                          util::vector<uint64_t> const *history)
 {
 	node_count_ = 0;
 	start_time_ = Clock::now();
 	node_limit_ = INT_MAX; // TODO
 	time_limit_ = time_limit;
 	stoken_ = stoken;
+	state_.history.clear();
+	state_.board = board;
+	if (history != nullptr)
+		state_.history = *history;
+	if (state_.history.empty() || state_.history.back() != board.zobrist())
+		state_.history.push_back(board.zobrist());
 	int depth_limit = 80; // safeguard
 
 	// generate all legal moves

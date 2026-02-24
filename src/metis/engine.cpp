@@ -5,9 +5,11 @@
 namespace metis {
 
 void RandomEngine::think(Board const &board, ProgressCallback progress,
-                         std::stop_token stoken, int)
+                         std::stop_token stoken, int,
+                         util::vector<uint64_t> const *history)
 {
 	(void)stoken;
+	(void)history;
 
 	MoveList moves;
 	generate_pseudolegal_moves(board, moves);
@@ -23,9 +25,11 @@ void RandomEngine::think(Board const &board, ProgressCallback progress,
 }
 
 void MateInOneEngine::think(Board const &board, ProgressCallback progress,
-                            std::stop_token stoken, int)
+                            std::stop_token stoken, int,
+                            util::vector<uint64_t> const *history)
 {
 	(void)stoken;
+	(void)history;
 
 	MoveList moves;
 	generate_pseudolegal_moves(board, moves);
@@ -54,9 +58,11 @@ void MateInOneEngine::think(Board const &board, ProgressCallback progress,
 }
 
 void CaptureEngine::think(Board const &board, ProgressCallback progress,
-                          std::stop_token stoken, int)
+                          std::stop_token stoken, int,
+                          util::vector<uint64_t> const *history)
 {
 	(void)stoken;
+	(void)history;
 	MoveList candidates;
 	generate_pseudolegal_moves(board, candidates);
 
@@ -98,6 +104,8 @@ void CaptureEngine::think(Board const &board, ProgressCallback progress,
 int play_game(Engine &white, Engine &black, bool verbose)
 {
 	auto board = Board::startpos();
+	util::vector<uint64_t> history;
+	history.push_back(board.zobrist());
 	int result = 0;
 	for (int halfmove = 0;; ++halfmove)
 	{
@@ -118,8 +126,9 @@ int play_game(Engine &white, Engine &black, bool verbose)
 			break;
 		}
 
-		auto r = board.color_to_move == Color::White ? white.think(board)
-		                                             : black.think(board);
+		auto r = board.color_to_move == Color::White
+		             ? white.think(board, {}, INT_MAX, &history)
+		             : black.think(board, {}, INT_MAX, &history);
 		if (verbose)
 		{
 			board.print();
@@ -127,6 +136,7 @@ int play_game(Engine &white, Engine &black, bool verbose)
 			fflush(stdout);
 		}
 		board.make_move(r.best_move);
+		history.push_back(board.zobrist());
 	}
 	if (verbose)
 		fmt::print("\nresult = {}\n", result);

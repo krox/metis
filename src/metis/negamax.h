@@ -3,6 +3,7 @@
 #include "metis/engine.h"
 #include "metis/evaluator.h"
 #include "util/json.h"
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -45,6 +46,7 @@ class NegamaxEngine final : public Engine
 	int64_t node_limit_ = INT64_MAX;
 	int time_limit_ = INT_MAX; // milliseconds
 	std::stop_token stoken_;
+	GameState state_;
 
 	// recursive search function.
 	//   * If search was interrupted (time/node limit), returns std::nullopt.
@@ -63,6 +65,9 @@ class NegamaxEngine final : public Engine
 	std::optional<int> search(Board board, Move move, int depth, int alpha,
 	                          int beta);
 
+	// check if board position occurred at least three times in current history.
+	bool is_threefold_repetition(Board const &board) const;
+
   public:
 	explicit NegamaxEngine(std::shared_ptr<Evaluator> const &evaluator,
 	                       Options const &opts);
@@ -74,7 +79,8 @@ class NegamaxEngine final : public Engine
 	}
 
 	void think(Board const &, ProgressCallback, std::stop_token,
-	           int time_limit = INT_MAX) override;
+	           int time_limit = INT_MAX,
+	           util::vector<uint64_t> const *history = nullptr) override;
 };
 
 } // namespace metis

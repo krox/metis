@@ -69,3 +69,80 @@ TEST_CASE("movegen", "[perft]")
 		CHECK(s.perft(4) == 3894594);
 	}
 }
+
+TEST_CASE("position key", "[repetition]")
+{
+	SECTION("same board state after reversible moves")
+	{
+		auto board = metis::Board::startpos();
+		auto start_key = board.zobrist();
+
+		board.make_move(metis::Move("g1f3"));
+		board.make_move(metis::Move("b8c6"));
+		board.make_move(metis::Move("f3g1"));
+		board.make_move(metis::Move("c6b8"));
+
+		CHECK(board.zobrist() == start_key);
+	}
+
+	SECTION("castling rights are part of key")
+	{
+		auto a = metis::Board::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1");
+		auto b = metis::Board::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w - - 0 1");
+
+		CHECK(!(a.zobrist() == b.zobrist()));
+	}
+
+	SECTION("en passant square is part of key")
+	{
+		auto a = metis::Board::from_fen(
+		    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+		auto b = metis::Board::from_fen(
+		    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq e3 0 1");
+
+		CHECK(!(a.zobrist() == b.zobrist()));
+	}
+
+	SECTION("polyglot vectors")
+	{
+		auto s0 = metis::Board::from_fen(
+		    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+		CHECK(s0.zobrist() == 0x463b96181691fc9cULL);
+
+		auto s1 = metis::Board::from_fen(
+		    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+		CHECK(s1.zobrist() == 0x823c9b50fd114196ULL);
+
+		auto s2 = metis::Board::from_fen(
+		    "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2");
+		CHECK(s2.zobrist() == 0x0756b94461c50fb0ULL);
+	}
+
+	SECTION("startpos moves parser consumes move history")
+	{
+		auto parsed = metis::GameState::from_uci(
+		    "startpos moves g1f3 b8c6 f3g1 c6b8");
+
+		auto manual = metis::Board::startpos();
+		manual.make_move(metis::Move("g1f3"));
+		manual.make_move(metis::Move("b8c6"));
+		manual.make_move(metis::Move("f3g1"));
+		manual.make_move(metis::Move("c6b8"));
+
+		CHECK(parsed.board.zobrist() == manual.zobrist());
+		CHECK(parsed.history.size() == 5);
+		CHECK(parsed.history.back() == parsed.board.zobrist());
+		CHECK(parsed.board.zobrist() == metis::Board::startpos().zobrist());
+	}
+
+	SECTION("ep square only set when capturable")
+	{
+		auto a = metis::Board::startpos();
+		a.make_move(metis::Move("e2e4"));
+		CHECK(a.ep_square == metis::Bitboard::none);
+
+		auto b = metis::Board::from_fen("4k3/8/8/8/3p4/8/4P3/4K3 w - - 0 1");
+		b.make_move(metis::Move("e2e4"));
+		CHECK(b.ep_square == metis::square((4) + 8 * 2)); // e3
+	}
+}
