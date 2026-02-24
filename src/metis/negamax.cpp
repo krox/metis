@@ -113,7 +113,7 @@ std::optional<int> NegamaxEngine::search(Board board, Move move, int depth,
 
 void NegamaxEngine::think(Board const &board, ProgressCallback progress,
                           std::stop_token stoken, int time_limit,
-                          util::vector<uint64_t> const *history)
+                          std::span<uint64_t const> history)
 {
 	node_count_ = 0;
 	start_time_ = Clock::now();
@@ -122,8 +122,7 @@ void NegamaxEngine::think(Board const &board, ProgressCallback progress,
 	stoken_ = stoken;
 	state_.history.clear();
 	state_.board = board;
-	if (history != nullptr)
-		state_.history = *history;
+	state_.history.assign(history.begin(), history.end());
 	if (state_.history.empty() || state_.history.back() != board.zobrist())
 		state_.history.push_back(board.zobrist());
 	int depth_limit = 80; // safeguard

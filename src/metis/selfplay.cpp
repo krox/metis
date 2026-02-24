@@ -53,7 +53,7 @@ void run_selfplay_command(Options opt)
 				break;
 
 			auto move =
-			    game_engine->think(board, {}, INT_MAX, &history).best_move;
+			    game_engine->think(board, {}, INT_MAX, history).best_move;
 			board.make_move(move);
 			history.push_back(board.zobrist());
 			moves.push_back(move);

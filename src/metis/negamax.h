@@ -80,7 +80,7 @@ class NegamaxEngine final : public Engine
 
 	void think(Board const &, ProgressCallback, std::stop_token,
 	           int time_limit = INT_MAX,
-	           util::vector<uint64_t> const *history = nullptr) override;
+	           std::span<uint64_t const> history = {}) override;
 };
 
 } // namespace metis

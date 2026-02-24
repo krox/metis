@@ -6,7 +6,7 @@ namespace metis {
 
 void RandomEngine::think(Board const &board, ProgressCallback progress,
                          std::stop_token stoken, int,
-                         util::vector<uint64_t> const *history)
+                         std::span<uint64_t const> history)
 {
 	(void)stoken;
 	(void)history;
@@ -26,7 +26,7 @@ void RandomEngine::think(Board const &board, ProgressCallback progress,
 
 void MateInOneEngine::think(Board const &board, ProgressCallback progress,
                             std::stop_token stoken, int,
-                            util::vector<uint64_t> const *history)
+                            std::span<uint64_t const> history)
 {
 	(void)stoken;
 	(void)history;
@@ -59,7 +59,7 @@ void MateInOneEngine::think(Board const &board, ProgressCallback progress,
 
 void CaptureEngine::think(Board const &board, ProgressCallback progress,
                           std::stop_token stoken, int,
-                          util::vector<uint64_t> const *history)
+                          std::span<uint64_t const> history)
 {
 	(void)stoken;
 	(void)history;
@@ -127,8 +127,8 @@ int play_game(Engine &white, Engine &black, bool verbose)
 		}
 
 		auto r = board.color_to_move == Color::White
-		             ? white.think(board, {}, INT_MAX, &history)
-		             : black.think(board, {}, INT_MAX, &history);
+		             ? white.think(board, {}, INT_MAX, history)
+		             : black.think(board, {}, INT_MAX, history);
 		if (verbose)
 		{
 			board.print();

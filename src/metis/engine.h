@@ -5,6 +5,7 @@
 #include "util/functional.h"
 #include "util/random.h"
 #include <cassert>
+#include <span>
 #include <stop_token>
 
 namespace metis {
@@ -36,12 +37,12 @@ class Engine
 	// reached (max_time, max_depth, max_nodes, ...)
 	virtual void think(Board const &board, ProgressCallback progress,
 	                   std::stop_token stoken, int time_limit = INT_MAX,
-	                   util::vector<uint64_t> const *history = nullptr) = 0;
+	                   std::span<uint64_t const> history = {}) = 0;
 
 	// simplified version of think() that just returns the final result
 	AnalysisResult think(Board const &board, std::stop_token stoken = {},
 	                     int time_limit = INT_MAX,
-	                     util::vector<uint64_t> const *history = nullptr)
+	                     std::span<uint64_t const> history = {})
 	{
 		AnalysisResult result;
 		think(
@@ -65,7 +66,7 @@ class RandomEngine final : public Engine
   public:
 	void think(Board const &board, ProgressCallback progress,
 	           std::stop_token stoken, int,
-	           util::vector<uint64_t> const *history = nullptr) override;
+	           std::span<uint64_t const> history = {}) override;
 
 	std::unique_ptr<Engine> clone() const override
 	{
@@ -79,7 +80,7 @@ class MateInOneEngine final : public Engine
   public:
 	void think(Board const &board, ProgressCallback progress,
 	           std::stop_token stoken, int,
-	           util::vector<uint64_t> const *history = nullptr) override;
+	           std::span<uint64_t const> history = {}) override;
 
 	std::unique_ptr<Engine> clone() const override
 	{
@@ -93,7 +94,7 @@ class CaptureEngine final : public Engine
   public:
 	void think(Board const &board, ProgressCallback progress,
 	           std::stop_token stoken, int,
-	           util::vector<uint64_t> const *history = nullptr) override;
+	           std::span<uint64_t const> history = {}) override;
 
 	std::unique_ptr<Engine> clone() const override
 	{

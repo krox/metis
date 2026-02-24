@@ -61,7 +61,7 @@ void UCI::go(int time_limit)
 				    respond("info pv {} score cp {} depth {} nodes {}",
 				            best_move_, r.score, r.depth, r.nodes);
 		    },
-		    stoken, time_limit, &state_.history);
+		    stoken, time_limit, state_.history);
 		respond("bestmove {}", best_move_);
 	});
 }
