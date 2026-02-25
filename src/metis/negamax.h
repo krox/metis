@@ -1,5 +1,6 @@
 #pragma once
 
+#include "metis/cache.h"
 #include "metis/engine.h"
 #include "metis/evaluator.h"
 #include "util/json.h"
@@ -38,6 +39,7 @@ class NegamaxEngine final : public Engine
   private:
 	Options options_;
 	std::shared_ptr<Evaluator> eval_;
+	Cache cache_;
 
 	// these are reset at the start of each '.think()' call
 	int64_t node_count_ = 0;
