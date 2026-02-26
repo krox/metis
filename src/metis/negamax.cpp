@@ -190,13 +190,16 @@ void NegamaxEngine::think(Board const &board, ProgressCallback progress,
 		return !new_board.legal();
 	});
 
-	// only one legal move: no need to search
 	assert(!moves.empty());
+
+	// be sure to send out some progress update even if the search is stopped
+	// before we can search anything.
+	progress({.best_move = moves[0]});
+
+	// only one legal move: no point in searching anything.
+	// TODO: the same is true if all-but-one moves are losing.
 	if (moves.size() == 1)
-	{
-		progress({.best_move = moves[0]});
 		return;
-	}
 
 	int best_score = -32000;
 	Move best_move = moves[0];

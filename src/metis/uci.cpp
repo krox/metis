@@ -47,8 +47,9 @@ void UCI::go(int time_limit)
 {
 	stop();
 
-	// lazy init of the engine
-	// (uci protocol suggests to do this not eagerly)
+	// init the engine if it wasnt already.
+	// NOTE: if the GUI is well-behaved, it should have sent a "ucinewgame"
+	// command before this, which also triggers the init.
 	if (engine_ == nullptr)
 		engine_ = make_engine(engine_name_);
 
@@ -106,6 +107,14 @@ void UCI::run()
 			// think this can be ignored in practice as new positions are set
 			// using the "position" command anyways. Should probably reset
 			// internal states here.
+
+			// note: doing engine-init here saves us a little time on the first
+			// 'go' command. Might be a good idea if memory allocation is slow
+			// and timeouts are short.
+			stop();
+			if (engine_ == nullptr)
+				engine_ = make_engine(engine_name_);
+			// else engine_.clear_cache(); // maybe?
 		}
 		else if (lexer.ident("position"))
 		{
